@@ -1,1 +1,0 @@
-# Sistema_ICIC_FRONTEND
