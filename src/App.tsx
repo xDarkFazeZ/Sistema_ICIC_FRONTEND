@@ -1,16 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Login from './pages/login.tsx'
-
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        {/* Aquí irán más rutas después */}
-      </Routes>
-    </BrowserRouter>
-  )
+// Este archivo ya no se usa.
+// El routing está en router.ts
+export default function App() {
+  return null;
 }
-
-export default App
