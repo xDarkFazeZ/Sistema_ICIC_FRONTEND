@@ -153,7 +153,7 @@ export default function Login() {
       </div>
 
       {/* LOGIN DERECHA */}
-      <div className="w-full md:w-1/3 lg:w-1/4 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-black px-6 py-8 animate-in fade-in slide-in-from-right duration-700 delay-150">
+      <div className="w-full md:w-1/3 lg:w-2/4 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-black px-6 py-8 animate-in fade-in slide-in-from-right duration-700 delay-150">
 
         <div className="w-full max-w-md">
           <Card className="p-8 w-full shadow-2xl border border-gray-200/50 dark:border-gray-800/50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm animate-in fade-in zoom-in duration-500 delay-500">

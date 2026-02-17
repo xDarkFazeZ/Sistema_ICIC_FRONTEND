@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
+import Participantes from "./pages/participantes";
 import ProtectedRoute from "./components/protectedRoute";
 
 export const router = createBrowserRouter([
@@ -9,11 +10,15 @@ export const router = createBrowserRouter([
     element: <Login />,
   },
   {
-    element: <ProtectedRoute />, // 👈 wrapper
+    element: <ProtectedRoute />,
     children: [
       {
         path: "/dashboard",
         element: <Dashboard />,
+      },
+      {
+        path: "/participantes",
+        element: <Participantes />,
       },
     ],
   },
