@@ -1,13 +1,11 @@
 import { apiClient } from "./api/client";
 
 export const buscarInstructores = async (search: string) => {
-  if (!search || search.trim().length < 2) return [];
+  const res = await apiClient.get("/instructores", {
+    params: { search, limit: 10 },
+  });
 
-  const res = await apiClient.get(
-    `/instructores?search=${search}`
-  );
-
-  return res.data.data;
+  return res.data.data ?? [];
 };
 
 export const obtenerInstructorPorId = async (id: number) => {

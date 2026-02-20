@@ -1,150 +1,247 @@
-import { useState } from "react";
-import { Button } from "@heroui/react";
-import { PlusIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState } from "react";
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Button,
+  Input,
+  Chip,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Pagination,
+  Spinner,
+  Card,
+  CardBody,
+} from "@heroui/react";
+
+import { EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/24/solid";
 
 import CursoModal from "../../components/modals/Cursos/cursosModal";
-import InstructorModal from "../../components/modals/Instructor/instructorModal";
-import ParticipanteModal from "../../components/modals/Participante/participanteModal";
-import SiguientePasoModal, {
-  type SiguientePasoOpcion,
-} from "../../components/common/siguientePasoModal";
+import CursoDetalleModal from "../../components/modals/Cursos/cursosDetalleModal";
 
-// ── Íconos SVG inline ─────────────────────────────────────────────────────────
-const IcoInstructor = () => (
-  <svg
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-    fill="none"
-    stroke="white"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="8" r="4" />
-    <path d="M20 21a8 8 0 1 0-16 0" />
-    <path d="m14.5 14.5 2 2 4-4" />
-  </svg>
-);
+import {
+  listarCursos,
+  crearCurso,
+  eliminarCurso,
+  activarCurso,
+  desactivarCurso,
+} from "../../services/cursoService";
 
-const IcoParticipante = () => (
-  <svg
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-    fill="none"
-    stroke="white"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
-
-// ── Componente ────────────────────────────────────────────────────────────────
 export default function Cursos() {
-  // ── Estados de modales ───────────────────────────────────────────────────
+  const [cursos, setCursos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
-  const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
-  const [modalParticipanteAbierto, setModalParticipanteAbierto] = useState(false);
-  const [siguientePasoAbierto, setSiguientePasoAbierto] = useState(false);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
+  const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
 
-  // Guardamos el nombre del curso recién creado para mostrarlo en el modal
-  const [cursoCreadoNombre, setCursoCreadoNombre] = useState("");
-
-  // ── Handler: curso creado exitosamente ───────────────────────────────────
-  const handleCursoCreado = (nuevoCurso: any) => {
-    setCursoCreadoNombre(nuevoCurso?.nombre ?? "El curso");
-    // Abrir el modal de siguiente paso tras un pequeño delay
-    // para que la notificación de Sileo sea visible primero
-    setTimeout(() => setSiguientePasoAbierto(true), 400);
+  const cargarCursos = async () => {
+    try {
+      setLoading(true);
+      const res = await listarCursos({
+        page,
+        limit: 10,
+        search: search || undefined,
+      });
+      setCursos(res.data);
+      setTotalPages(res.pagination.pages);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ── Opciones del SiguientePasoModal ──────────────────────────────────────
-  const opcionesSiguientePaso: SiguientePasoOpcion[] = [
-    {
-      label: "Agregar Instructor",
-      descripcion: "Asigna o da de alta un instructor para este curso",
-      icono: <IcoInstructor />,
-      color: "from-emerald-400 to-teal-500",
-      onClick: () => setModalInstructorAbierto(true),
-    },
-    {
-      label: "Agregar Participantes",
-      descripcion: "Inscribe participantes al curso recién creado",
-      icono: <IcoParticipante />,
-      color: "from-blue-500 to-indigo-600",
-      onClick: () => setModalParticipanteAbierto(true),
-    },
-  ];
+  useEffect(() => {
+    cargarCursos();
+  }, [page, search]);
 
-  // ────────────────────────────────────────────────────────────────────────
+  const handleCrearCurso = async (data: any) => {
+    try {
+      setModalLoading(true);
+      await crearCurso(data);
+      setModalCursoAbierto(false);
+      cargarCursos();
+    } catch (error) {
+      console.error("Error al crear curso:", error);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleEliminar = async (id: number) => {
+    if (!confirm("¿Seguro que deseas eliminar este curso?")) return;
+    await eliminarCurso(id);
+    cargarCursos();
+  };
+
+  const handleToggleEstado = async (curso: any) => {
+    if (curso.activo) {
+      await desactivarCurso(curso.id);
+    } else {
+      await activarCurso(curso.id);
+    }
+    cargarCursos();
+  };
+
   return (
-    <div className="p-6">
-      {/* ── Encabezado de página ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-red-800 dark:from-red-500 dark:to-red-700">
-            Cursos
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Gestión de cursos e inscripciones
-          </p>
-        </div>
-
+    <div className="p-6 space-y-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-danger">Cursos</h1>
         <Button
-          onPress={() => setModalCursoAbierto(true)}
-          className="bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+          color="danger"
           startContent={<PlusIcon className="w-4 h-4" />}
+          onPress={() => setModalCursoAbierto(true)}
         >
           Nuevo Curso
         </Button>
       </div>
 
-      {/* ── Aquí va tu tabla de cursos ───────────────────────────────────── */}
-      {/* <TablaCursos /> */}
+      {/* BUSCADOR */}
+      <Card>
+        <CardBody>
+          <Input
+            placeholder="Buscar curso..."
+            value={search}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
+            isClearable
+          />
+        </CardBody>
+      </Card>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          MODALES
-      ════════════════════════════════════════════════════════════════════ */}
+      {/* TABLA */}
+      <Card>
+        <CardBody>
+          <Table
+            aria-label="Tabla de cursos"
+            bottomContent={
+              <div className="flex w-full justify-center">
+                <Pagination
+                  page={page}
+                  total={totalPages}
+                  onChange={(page) => setPage(page)}
+                  showControls
+                  color="danger"
+                />
+              </div>
+            }
+          >
+            <TableHeader>
+              <TableColumn>Nombre</TableColumn>
+              <TableColumn>Instructor</TableColumn>
+              <TableColumn>Fecha Inicio</TableColumn>
+              <TableColumn>Estado</TableColumn>
+              <TableColumn align="center">Acciones</TableColumn>
+            </TableHeader>
 
-      {/* 1. Crear / editar curso */}
+            <TableBody
+              items={cursos}
+              isLoading={loading}
+              loadingContent={<Spinner label="Cargando cursos..." />}
+              emptyContent="No hay cursos registrados"
+            >
+              {(curso) => (
+                <TableRow key={curso.id}>
+                  <TableCell
+                    className="cursor-pointer font-medium"
+                    onClick={() => {
+                      setCursoSeleccionado(curso);
+                      setDetalleAbierto(true);
+                    }}
+                  >
+                    {curso.nombre}
+                  </TableCell>
+
+                  <TableCell>
+                    {curso.instructor?.nombre}{" "}
+                    {curso.instructor?.apellidoPaterno}
+                  </TableCell>
+
+                  <TableCell>
+                    {new Date(curso.fechaInicio).toLocaleDateString()}
+                  </TableCell>
+
+                  <TableCell>
+                    <Chip
+                      color={curso.activo ? "success" : "default"}
+                      variant="flat"
+                    >
+                      {curso.activo ? "Activo" : "Inactivo"}
+                    </Chip>
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="flex justify-center">
+                      <Dropdown>
+                        <DropdownTrigger>
+                          <Button isIconOnly size="sm" variant="light">
+                            <EllipsisVerticalIcon className="w-5 h-5" />
+                          </Button>
+                        </DropdownTrigger>
+
+                        <DropdownMenu aria-label="Acciones del curso">
+                          <DropdownItem
+                            key="detalle"
+                            onPress={() => {
+                              setCursoSeleccionado(curso);
+                              setDetalleAbierto(true);
+                            }}
+                          >
+                            Ver detalle
+                          </DropdownItem>
+
+                          <DropdownItem
+                            key="toggle"
+                            onPress={() => handleToggleEstado(curso)}
+                          >
+                            {curso.activo ? "Desactivar" : "Activar"}
+                          </DropdownItem>
+
+                          <DropdownItem
+                            key="delete"
+                            className="text-danger"
+                            color="danger"
+                            onPress={() => handleEliminar(curso.id)}
+                          >
+                            Eliminar
+                          </DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
+
+      {/* MODALES */}
       <CursoModal
         isOpen={modalCursoAbierto}
         onClose={() => setModalCursoAbierto(false)}
-        onSuccess={handleCursoCreado}
+        onSubmit={handleCrearCurso}
+        isLoading={modalLoading}
       />
 
-      {/* 2. Siguiente paso (aparece después de crear un curso) */}
-      <SiguientePasoModal
-        isOpen={siguientePasoAbierto}
-        onClose={() => setSiguientePasoAbierto(false)}
-        subtitulo={cursoCreadoNombre}
-        opciones={opcionesSiguientePaso}
-      />
-
-      {/* 3. Instructor (abierto desde SiguientePasoModal) */}
-      <InstructorModal
-        isOpen={modalInstructorAbierto}
-        onClose={() => setModalInstructorAbierto(false)}
-        onSuccess={(instructor) => {
-          console.log("Instructor creado desde Cursos:", instructor);
-          setModalInstructorAbierto(false);
-        }}
-      />
-
-      {/* 4. Participante (abierto desde SiguientePasoModal) */}
-      <ParticipanteModal
-        isOpen={modalParticipanteAbierto}
-        onClose={() => setModalParticipanteAbierto(false)}
-        onSuccess={(participante) => {
-          console.log("Participante creado desde Cursos:", participante);
-          setModalParticipanteAbierto(false);
-        }}
+      <CursoDetalleModal
+        isOpen={detalleAbierto}
+        onClose={() => setDetalleAbierto(false)}
+        curso={cursoSeleccionado}
       />
     </div>
   );
