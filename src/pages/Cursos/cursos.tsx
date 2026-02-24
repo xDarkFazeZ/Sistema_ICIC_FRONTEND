@@ -17,9 +17,11 @@ import {
   Spinner,
   Card,
   CardBody,
+  Tooltip,
 } from "@heroui/react";
 
 import { EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 import CursoModal from "../../components/modals/Cursos/cursosModal";
 import CursoDetalleModal from "../../components/modals/Cursos/cursosDetalleModal";
@@ -32,27 +34,26 @@ import {
   desactivarCurso,
 } from "../../services/cursoService";
 
+// ✅ Nombre del instructor placeholder — debe coincidir con el de la BD
+const INSTRUCTOR_PLACEHOLDER = "Por Asignar";
+
 export default function Cursos() {
-  const [cursos, setCursos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [cursos, setCursos]           = useState<any[]>([]);
+  const [loading, setLoading]         = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState("");
+  const [page, setPage]               = useState(1);
+  const [totalPages, setTotalPages]   = useState(1);
+  const [search, setSearch]           = useState("");
 
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
-  const [detalleAbierto, setDetalleAbierto] = useState(false);
+  const [detalleAbierto, setDetalleAbierto]       = useState(false);
   const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
 
   const cargarCursos = async () => {
     try {
       setLoading(true);
-      const res = await listarCursos({
-        page,
-        limit: 10,
-        search: search || undefined,
-      });
+      const res = await listarCursos({ page, limit: 10, search: search || undefined });
       setCursos(res.data);
       setTotalPages(res.pagination.pages);
     } catch (error) {
@@ -94,6 +95,10 @@ export default function Cursos() {
     cargarCursos();
   };
 
+  // ✅ Determina si un curso no tiene instructor asignado
+  const sinInstructor = (curso: any) =>
+    !curso.instructor || curso.instructor.nombre === INSTRUCTOR_PLACEHOLDER;
+
   return (
     <div className="p-6 space-y-6">
       {/* HEADER */}
@@ -133,7 +138,7 @@ export default function Cursos() {
                 <Pagination
                   page={page}
                   total={totalPages}
-                  onChange={(page) => setPage(page)}
+                  onChange={(p) => setPage(p)}
                   showControls
                   color="danger"
                 />
@@ -156,6 +161,7 @@ export default function Cursos() {
             >
               {(curso) => (
                 <TableRow key={curso.id}>
+                  {/* Nombre */}
                   <TableCell
                     className="cursor-pointer font-medium"
                     onClick={() => {
@@ -166,15 +172,39 @@ export default function Cursos() {
                     {curso.nombre}
                   </TableCell>
 
+                  {/* Instructor — muestra advertencia si es placeholder */}
                   <TableCell>
-                    {curso.instructor?.nombre}{" "}
-                    {curso.instructor?.apellidoPaterno}
+                    {sinInstructor(curso) ? (
+                      <Tooltip
+                        content="Este curso aún no tiene instructor asignado"
+                        color="warning"
+                      >
+                        <Chip
+                          color="warning"
+                          variant="flat"
+                          size="sm"
+                          startContent={
+                            <ExclamationTriangleIcon className="w-3 h-3" />
+                          }
+                          className="cursor-default"
+                        >
+                          Sin asignar
+                        </Chip>
+                      </Tooltip>
+                    ) : (
+                      <span>
+                        {curso.instructor?.nombre}{" "}
+                        {curso.instructor?.apellidoPaterno}
+                      </span>
+                    )}
                   </TableCell>
 
+                  {/* Fecha inicio */}
                   <TableCell>
                     {new Date(curso.fechaInicio).toLocaleDateString()}
                   </TableCell>
 
+                  {/* Estado activo */}
                   <TableCell>
                     <Chip
                       color={curso.activo ? "success" : "default"}
@@ -184,6 +214,7 @@ export default function Cursos() {
                     </Chip>
                   </TableCell>
 
+                  {/* Acciones */}
                   <TableCell>
                     <div className="flex justify-center">
                       <Dropdown>
@@ -236,6 +267,8 @@ export default function Cursos() {
         onClose={() => setModalCursoAbierto(false)}
         onSubmit={handleCrearCurso}
         isLoading={modalLoading}
+        // Aquí puedes pasar onCrearInstructor si tienes un modal de instructor separado
+        // onCrearInstructor={() => setModalInstructorAbierto(true)}
       />
 
       <CursoDetalleModal

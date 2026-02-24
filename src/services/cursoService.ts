@@ -38,6 +38,7 @@ export const validarCursoBackend = async (data: any, isUpdate = false) => {
 };
 
 export const crearCurso = async (data: any) => {
+  console.log("PAYLOAD ENVIADO:", JSON.stringify(data, null, 2)); // ← agrega esto
   const res = await apiClient.post("/cursos", data);
   return res.data.data;
 };
