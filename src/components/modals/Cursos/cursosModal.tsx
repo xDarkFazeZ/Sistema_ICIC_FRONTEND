@@ -1,554 +1,779 @@
-import { useState, useEffect, useRef } from "react";
 import {
   Input,
   Textarea,
-  Button,
+  Autocomplete,
+  AutocompleteItem,
+  Switch,
   Select,
   SelectItem,
-  Switch,
+  Card,
+  CardBody,
+  Divider,
   Chip,
-  Spinner,
+  Button,
 } from "@heroui/react";
-import { DatePicker } from "@heroui/react";
-import { CalendarDate, parseDate } from "@internationalized/date";
+import { useEffect, useState } from "react";
+import { useDebounce } from "use-debounce";
 import { sileo } from "sileo";
+import {
+  buscarInstructores,
+  obtenerInstructorPorId,
+} from "../../../services/instructorService";
 import ModalForm from "../../common/modalForm";
+import InstructorModal from "../Instructor/instructorModal";
+import {
+  UserPlusIcon,
+  MagnifyingGlassIcon,
+  ClockIcon,
+  AcademicCapIcon,
+  CurrencyDollarIcon,
+  CalendarIcon,
+  MapPinIcon,
+  DocumentTextIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
+import {
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/24/solid";
 
-// Servicios
-//import { crearCurso, actualizarCurso } from "../../services/cursoService";
-import { buscarInstructores } from "../../../services/instructorService";
-
-// ── Iconos ───────────────────────────────────────────────────────────────────
-const Ic = {
-  Book: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-    </svg>
-  ),
-  User: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
-    </svg>
-  ),
-  Calendar: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  ),
-  Clock: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  ),
-  Building: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-    </svg>
-  ),
-  Dollar: () => (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-    </svg>
-  ),
-  Check: () => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  ),
-  AlertCircle: () => (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-  ),
-  X: () => (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-  ),
-};
-
-// ── Validadores ───────────────────────────────────────────────────────────────
-const validators: Record<string, (v: any, form?: Record<string, any>) => string | null> = {
-  nombre: v => !v || v.trim().length < 3 
-    ? "Requerido · Mínimo 3 caracteres" 
-    : v.length > 100 ? "Máximo 100 caracteres" : null,
-
-  instructorId: v => !v ? "Debes seleccionar un instructor" : null,
-
-  precioAfiliado: v => !v || isNaN(v) || Number(v) <= 0 
-    ? "Precio válido requerido" : null,
-
-  precioPublico: v => !v || isNaN(v) || Number(v) <= 0 
-    ? "Precio válido requerido" : null,
-
-  precioEstudiante: v => !v || isNaN(v) || Number(v) <= 0 
-    ? "Precio válido requerido" : null,
-
-  horario: v => !v || v.trim().length < 3 
-    ? "Requerido" : null,
-
-  fechaInicio: v => !v ? "Fecha de inicio requerida" : null,
-
-  // ✅ CORREGIDO: validador de fechaFin sin parámetros opcionales anidados
-  fechaFin: (v, form) => {
-    if (!v) return "Fecha de fin requerida";
-    if (!form?.fechaInicio) return null;
-    const inicio = new Date(form.fechaInicio);
-    const fin = new Date(v);
-    return fin <= inicio ? "La fecha de fin debe ser posterior a la de inicio" : null;
-  },
-
-  duracion: v => !v || isNaN(v) || Number(v) <= 0 
-    ? "Duración válida requerida (horas)" : null,
-
-  nivelGerencial: v => !v || v.trim().length < 2 
-    ? "Requerido" : null,
-
-  aula: v => v && v.length > 50 ? "Máximo 50 caracteres" : null,
-};
-
-const REQUIRED_FIELDS = [
-  "nombre", "instructorId", "precioAfiliado", "precioPublico", 
-  "precioEstudiante", "horario", "fechaInicio", "fechaFin", 
-  "duracion", "nivelGerencial"
-];
-
-// ── Helper de label ──────────────────────────────────────────────────────────
-function RequiredLabel({ label, required }: { label: string; required?: boolean }) {
-  return (
-    <span>
-      {label}
-      {required && <span className="text-rose-500 ml-0.5">*</span>}
-    </span>
-  );
-}
-
-function FieldOk({ ok }: { ok: boolean }) {
-  return ok ? <span className="text-emerald-500"><Ic.Check /></span> : null;
-}
-
-// ── Props del modal ──────────────────────────────────────────────────────────
 interface CursoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (curso: any) => void;
+  onSubmit: (data: any) => Promise<void>;
   cursoToEdit?: any;
+  isLoading?: boolean;
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
-export default function CursoModal({ 
-  isOpen, 
-  onClose, 
-  onSuccess,
-  cursoToEdit 
+const NIVELES_GERENCIALES = [
+  { key: "Operativo", label: "Operativo", description: "Supervisores y coordinadores" },
+  { key: "Medio", label: "Medio", description: "Jefes de área y gerentes" },
+  { key: "Directivo", label: "Directivo", description: "Directores y alta dirección" },
+];
+
+type InstructorMode = "buscar" | "crear" | "despues";
+
+const FORM_INITIAL: Record<string, any> = {
+  nombre: "",
+  descripcion: "",
+  precioAfiliado: "",
+  precioPublico: "",
+  precioEstudiante: "",
+  duracion: "",
+  horario: "",
+  fechaInicio: "",
+  fechaFin: "",
+  aula: "",
+  nivelGerencial: "",
+  activo: true,
+  instructorId: null as number | null,
+};
+
+export default function CursoModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  cursoToEdit,
+  isLoading = false,
 }: CursoModalProps) {
-  const [form, setForm] = useState<Record<string, any>>({ activo: true });
-  const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [form, setForm] = useState<Record<string, any>>({ ...FORM_INITIAL });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [instructorMode, setInstructorMode] = useState<InstructorMode | null>(null);
+  const [instructorSearch, setInstructorSearch] = useState("");
+  const [debouncedSearch] = useDebounce(instructorSearch, 400);
   const [instructores, setInstructores] = useState<any[]>([]);
-  const [loadingInstructores, setLoadingInstructores] = useState(false);
+  const [isLoadingInstructores, setIsLoadingInstructores] = useState(false);
+  const [instructorSeleccionado, setInstructorSeleccionado] = useState<any | null>(null);
+  const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
 
-  const instructoresCargados = useRef(false);
-
-  // Reset form cuando se abre/cierra el modal
+  // ── Reset al cerrar ──────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
-      setForm({ activo: true });
+      setForm({ ...FORM_INITIAL });
+      setInstructorSearch("");
+      setInstructores([]);
       setErrors({});
-      setTouched({});
-      setSubmitError(null);
-    } else if (cursoToEdit) {
-      // Si hay curso a editar, cargar datos
+      setInstructorMode(null);
+      setInstructorSeleccionado(null);
+    }
+  }, [isOpen]);
+
+  // ── Modo edición ─────────────────────────────────────────────
+  useEffect(() => {
+    if (cursoToEdit && isOpen) {
       setForm({
-        ...cursoToEdit,
-        fechaInicio: cursoToEdit.fechaInicio?.split('T')[0],
-        fechaFin: cursoToEdit.fechaFin?.split('T')[0],
+        nombre: cursoToEdit.nombre ?? "",
+        descripcion: cursoToEdit.descripcion ?? "",
+        precioAfiliado: String(cursoToEdit.precioAfiliado ?? ""),
+        precioPublico: String(cursoToEdit.precioPublico ?? ""),
+        precioEstudiante: String(cursoToEdit.precioEstudiante ?? ""),
+        duracion: String(cursoToEdit.duracion ?? ""),
+        horario: cursoToEdit.horario ?? "",
+        fechaInicio: cursoToEdit.fechaInicio?.substring(0, 10) ?? "",
+        fechaFin: cursoToEdit.fechaFin?.substring(0, 10) ?? "",
+        aula: cursoToEdit.aula ?? "",
+        nivelGerencial: cursoToEdit.nivelGerencial ?? "",
+        activo: cursoToEdit.activo ?? true,
+        instructorId: cursoToEdit.instructorId ?? null,
       });
+      setInstructorMode("buscar");
     }
-  }, [isOpen, cursoToEdit]);
+  }, [cursoToEdit, isOpen]);
 
-  // Cargar instructores cuando se abre el select
-  const handleOpenInstructores = async () => {
-    if (instructoresCargados.current) return;
-    setLoadingInstructores(true);
-    try {
-      setInstructores(await buscarInstructores(""));
-      instructoresCargados.current = true;
-    } catch (e) {
-      console.error("Error cargando instructores:", e);
-    } finally {
-      setLoadingInstructores(false);
-    }
-  };
+  // ── Cargar instructor en edición ─────────────────────────────
+  useEffect(() => {
+    const loadInstructor = async () => {
+      if (cursoToEdit?.instructorId && isOpen) {
+        const inst = await obtenerInstructorPorId(cursoToEdit.instructorId);
+        setInstructorSearch(
+          `${inst.nombre} ${inst.apellidoPaterno} ${inst.apellidoMaterno ?? ""}`.trim()
+        );
+        setInstructores([inst]);
+        setInstructorSeleccionado(inst);
+      }
+    };
+    loadInstructor();
+  }, [cursoToEdit, isOpen]);
 
-  // Handlers
+  // ── Buscar instructores con debounce ─────────────────────────
+  useEffect(() => {
+    const fetchInstructores = async () => {
+      if (instructorMode !== "buscar") return;
+      if (!debouncedSearch || debouncedSearch.length < 2) {
+        setInstructores([]);
+        return;
+      }
+      try {
+        setIsLoadingInstructores(true);
+        const data = await buscarInstructores(debouncedSearch);
+        setInstructores(data);
+      } finally {
+        setIsLoadingInstructores(false);
+      }
+    };
+    fetchInstructores();
+  }, [debouncedSearch, instructorMode]);
+
+  // ── Helpers ──────────────────────────────────────────────────
   const handleChange = (field: string, value: any) => {
-    const updated = { ...form, [field]: value };
-    setForm(updated);
-    if (touched[field] && validators[field]) {
-      const error = validators[field](value, updated);
-      setErrors(p => ({ ...p, [field]: error }));
-    }
-    // Validación especial para fechaFin vs fechaInicio
-    if (field === "fechaInicio" && touched.fechaFin) {
-      const error = validators.fechaFin?.(form.fechaFin, updated);
-      setErrors(p => ({ ...p, fechaFin: error ?? null }));
-    }
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleBlur = (field: string) => {
-    setTouched(p => ({ ...p, [field]: true }));
-    if (validators[field]) {
-      setErrors(p => ({ ...p, [field]: validators[field](form[field], form) }));
+  const handleModeChange = (mode: InstructorMode) => {
+    if (mode === instructorMode && mode !== "crear") return;
+    setInstructorMode(mode);
+    if (mode !== "buscar") {
+      handleChange("instructorId", null);
+      setInstructorSearch("");
+      setInstructores([]);
+      setInstructorSeleccionado(null);
     }
+    if (errors.instructorId) setErrors((prev) => ({ ...prev, instructorId: "" }));
+    if (mode === "crear") setModalInstructorAbierto(true);
   };
 
-  const validateAll = () => {
-    const e: Record<string, string | null> = {};
-    for (const [field, validate] of Object.entries(validators)) {
-      const err = validate(form[field], form);
-      if (err) e[field] = err;
-    }
-    setErrors(e);
-    setTouched(Object.fromEntries(Object.keys(validators).map(k => [k, true])));
-    return Object.keys(e).length === 0;
+  // ── Instructor creado desde modal anidado ────────────────────
+  const handleInstructorCreado = (instructor: any) => {
+    handleChange("instructorId", instructor.id);
+    setInstructorSeleccionado(instructor);
+    setInstructorSearch(
+      `${instructor.nombre} ${instructor.apellidoPaterno} ${instructor.apellidoMaterno ?? ""}`.trim()
+    );
+    setInstructores([instructor]);
+    setInstructorMode("buscar");
+    setModalInstructorAbierto(false);
+    sileo.success({
+      title: "¡Instructor asignado!",
+      description: `${instructor.nombre} ${instructor.apellidoPaterno} fue creado y asignado al curso.`,
+    });
   };
 
-  // Submit
-  const handleSubmit = async () => {
-    if (!validateAll()) {
+  // ── Validación ───────────────────────────────────────────────
+  const validate = (): Record<string, string> => {
+    const e: Record<string, string> = {};
+    if (!form.nombre || form.nombre.trim().length < 3)
+      e.nombre = "El nombre debe tener al menos 3 caracteres";
+    if (!form.aula) e.aula = "Aula requerida";
+    if (!form.nivelGerencial) e.nivelGerencial = "Nivel gerencial requerido";
+    if (!form.horario) e.horario = "Horario requerido";
+
+    const pA = Number(form.precioAfiliado);
+    const pP = Number(form.precioPublico);
+    const pE = Number(form.precioEstudiante);
+    if (form.precioAfiliado === "" || isNaN(pA)) e.precioAfiliado = "Precio inválido";
+    if (form.precioPublico === "" || isNaN(pP)) e.precioPublico = "Precio inválido";
+    if (form.precioEstudiante === "" || isNaN(pE)) e.precioEstudiante = "Precio inválido";
+    if (!e.precioAfiliado && !e.precioPublico && pA > pP)
+      e.precioAfiliado = "Precio afiliado debe ser ≤ precio público";
+
+    if (!form.fechaInicio) e.fechaInicio = "Fecha inicio requerida";
+    if (!form.fechaFin) e.fechaFin = "Fecha fin requerida";
+    if (form.fechaInicio && form.fechaFin && form.fechaFin <= form.fechaInicio)
+      e.fechaFin = "Fecha fin debe ser posterior a fecha inicio";
+
+    if (instructorMode === "buscar" && !form.instructorId)
+      e.instructorId = "Selecciona un instructor de la lista";
+
+    return e;
+  };
+
+  // ── Submit ───────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors = validate();
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       sileo.warning({
-        title: "Campos con errores",
-        description: "Revisa los campos marcados en rojo antes de continuar.",
+        title: "Campos incompletos",
+        description: "Revisa los campos marcados antes de continuar.",
       });
       return;
     }
 
-    setSubmitError(null);
-    setIsSubmitting(true);
-
     try {
-      // Preparar datos para enviar
-      const cursoData = {
+      await onSubmit({
         ...form,
-        instructorId: Number(form.instructorId),
         precioAfiliado: Number(form.precioAfiliado),
         precioPublico: Number(form.precioPublico),
         precioEstudiante: Number(form.precioEstudiante),
-        duracion: Number(form.duracion),
-        activo: form.activo ?? true,
-      };
-
-      let response;
-      if (cursoToEdit) {
-        response = await actualizarCurso(cursoToEdit.id, cursoData);
-      } else {
-        response = await crearCurso(cursoData);
-      }
+        duracion: form.duracion ? Number(form.duracion) : undefined,
+        instructorId: instructorMode === "despues" ? undefined : form.instructorId,
+      });
 
       sileo.success({
-        title: cursoToEdit ? "Curso actualizado" : "Curso creado",
-        description: cursoToEdit 
-          ? "El curso se ha actualizado correctamente." 
-          : "El curso se ha creado correctamente.",
+        title: cursoToEdit ? "¡Curso actualizado!" : "¡Curso creado!",
+        description: cursoToEdit
+          ? `"${form.nombre}" se actualizó correctamente.`
+          : `"${form.nombre}" se creó correctamente.`,
       });
-
-      onSuccess?.(response);
-      onClose();
     } catch (err: any) {
-      const data = err?.response?.data;
-      const msg = data?.message ?? data?.error ?? err?.message ?? "Error al guardar el curso";
-      setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg));
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        err?.message ??
+        "Error desconocido";
       sileo.error({
-        title: "Error",
-        description: "No se pudo guardar el curso. Intenta de nuevo.",
+        title: "Error al guardar",
+        description: typeof msg === "string" ? msg : "No se pudo guardar el curso.",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  // Calcular progreso
-  const filled = REQUIRED_FIELDS.filter(f => {
-    const val = form[f];
-    return val !== null && val !== undefined && val !== "";
-  }).length;
-  const totalRequired = REQUIRED_FIELDS.length;
-  const pct = Math.round((filled / totalRequired) * 100);
-
-  // Estilos compartidos
-  const inputCN = {
-    inputWrapper: [
-      "border border-slate-200 bg-white shadow-sm transition-all duration-200",
-      "data-[hover=true]:border-indigo-300",
-      "data-[focus=true]:border-indigo-500 data-[focus=true]:shadow-md",
-      "data-[invalid=true]:border-rose-400 data-[invalid=true]:bg-rose-50/30",
-    ].join(" "),
-    label: "text-slate-500 text-xs font-medium",
-    input: "text-slate-800 text-sm font-medium",
-    errorMessage: "text-rose-500 text-[11px] font-medium mt-1",
-  };
-
-  const inp = (field: string, label: string, required = true, extra: any = {}) => ({
-    label: <RequiredLabel label={label} required={required} /> as any,
-    size: "sm" as const,
-    variant: "bordered" as const,
-    radius: "lg" as const,
-    isInvalid: !!(touched[field] && errors[field]),
-    errorMessage: touched[field] ? errors[field] ?? undefined : undefined,
-    onBlur: () => handleBlur(field),
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(field, e.target.value),
-    classNames: inputCN,
-    value: form[field]?.toString() ?? "",
-    ...extra,
-  });
-
   return (
-    <ModalForm
-      isOpen={isOpen}
-      onClose={onClose}
-      title={cursoToEdit ? "Editar Curso" : "Nuevo Curso"}
-      size="3xl"
-      isLoading={isSubmitting}
-    >
-      <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
-        
-        {/* Barra de progreso */}
-        {!cursoToEdit && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 sticky top-0 z-10 bg-white/90 backdrop-blur-sm">
-            <div className="relative w-10 h-10 flex-shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                <circle
-                  cx="20" cy="20" r="16" fill="none"
-                  stroke={pct === 100 ? "#10b981" : "#4f46e5"}
-                  strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 16}`}
-                  strokeDashoffset={`${2 * Math.PI * 16 * (1 - pct / 100)}`}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-slate-700">
-                {pct}%
-              </span>
+    <>
+      <ModalForm
+        isOpen={isOpen}
+        onClose={onClose}
+        title={
+          <div className="flex items-center gap-2">
+            <AcademicCapIcon className="w-6 h-6 text-danger" />
+            <span>{cursoToEdit ? "Editar Curso" : "Nuevo Curso"}</span>
+          </div>
+        }
+        size="3xl"
+        isLoading={isLoading}
+        className="bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50"
+      >
+        <form id="modal-form" onSubmit={handleSubmit} className="space-y-6">
+          {/* Información básica */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <DocumentTextIcon className="w-5 h-5 text-danger" />
+              <h3 className="text-lg font-semibold text-default-800">Información básica</h3>
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-slate-600">Progreso del formulario</p>
-              <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                  style={{ width: `${pct}%` }}
-                />
+            <Divider className="bg-danger/20" />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Nombre del curso"
+                value={form.nombre}
+                onValueChange={(v) => handleChange("nombre", v)}
+                isRequired
+                isInvalid={!!errors.nombre}
+                errorMessage={errors.nombre}
+                className="col-span-2"
+                classNames={{
+                  input: "text-base",
+                  label: "font-medium",
+                }}
+                placeholder="Ej: Liderazgo transformacional"
+                startContent={<AcademicCapIcon className="w-4 h-4 text-default-400" />}
+                size="lg"
+              />
+              
+              <Textarea
+                label="Descripción"
+                value={form.descripcion}
+                onValueChange={(v) => handleChange("descripcion", v)}
+                className="col-span-2"
+                minRows={3}
+                placeholder="Describe el contenido y objetivos del curso..."
+                classNames={{
+                  label: "font-medium",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Precios y duración */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CurrencyDollarIcon className="w-5 h-5 text-danger" />
+              <h3 className="text-lg font-semibold text-default-800">Precios y duración</h3>
+            </div>
+            <Divider className="bg-danger/20" />
+            
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                type="number"
+                label="Precio Afiliado"
+                value={form.precioAfiliado}
+                onValueChange={(v) => handleChange("precioAfiliado", v)}
+                isRequired
+                isInvalid={!!errors.precioAfiliado}
+                errorMessage={errors.precioAfiliado}
+                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
+                min={0}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+              />
+              
+              <Input
+                type="number"
+                label="Precio Público"
+                value={form.precioPublico}
+                onValueChange={(v) => handleChange("precioPublico", v)}
+                isRequired
+                isInvalid={!!errors.precioPublico}
+                errorMessage={errors.precioPublico}
+                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
+                min={0}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+              />
+              
+              <Input
+                type="number"
+                label="Precio Estudiante"
+                value={form.precioEstudiante}
+                onValueChange={(v) => handleChange("precioEstudiante", v)}
+                isRequired
+                isInvalid={!!errors.precioEstudiante}
+                errorMessage={errors.precioEstudiante}
+                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
+                min={0}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+              />
+
+              <Input
+                type="number"
+                label="Duración (horas)"
+                value={form.duracion}
+                onValueChange={(v) => handleChange("duracion", v)}
+                min={1}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+                placeholder="40"
+                endContent={<span className="text-default-400 text-sm">hrs</span>}
+              />
+            </div>
+          </div>
+
+          {/* Horario y ubicación */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-danger" />
+              <h3 className="text-lg font-semibold text-default-800">Horario y ubicación</h3>
+            </div>
+            <Divider className="bg-danger/20" />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Horario"
+                value={form.horario}
+                onValueChange={(v) => handleChange("horario", v)}
+                placeholder="09:00 - 14:00"
+                isRequired
+                isInvalid={!!errors.horario}
+                errorMessage={errors.horario}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+                startContent={<ClockIcon className="w-4 h-4 text-default-400" />}
+              />
+              
+              <Input
+                label="Aula"
+                value={form.aula}
+                onValueChange={(v) => handleChange("aula", v)}
+                isRequired
+                isInvalid={!!errors.aula}
+                errorMessage={errors.aula}
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+                startContent={<MapPinIcon className="w-4 h-4 text-default-400" />}
+                placeholder="Ej: Auditorio A"
+              />
+              
+              <Input
+                type="date"
+                label="Fecha de inicio"
+                value={form.fechaInicio}
+                onValueChange={(v) => handleChange("fechaInicio", v)}
+                isRequired
+                isInvalid={!!errors.fechaInicio}
+                errorMessage={errors.fechaInicio}
+                labelPlacement="outside"
+                placeholder=" "
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+              />
+              
+              <Input
+                type="date"
+                label="Fecha de fin"
+                value={form.fechaFin}
+                onValueChange={(v) => handleChange("fechaFin", v)}
+                isRequired
+                isInvalid={!!errors.fechaFin}
+                errorMessage={errors.fechaFin}
+                labelPlacement="outside"
+                placeholder=" "
+                classNames={{
+                  label: "font-medium",
+                }}
+                size="lg"
+              />
+            </div>
+          </div>
+
+          {/* Nivel gerencial y estado */}
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Nivel gerencial"
+              selectedKeys={form.nivelGerencial ? new Set([form.nivelGerencial]) : new Set()}
+              onSelectionChange={(keys) => {
+                const val = Array.from(keys)[0] as string;
+                handleChange("nivelGerencial", val ?? "");
+              }}
+              isRequired
+              isInvalid={!!errors.nivelGerencial}
+              errorMessage={errors.nivelGerencial}
+              classNames={{
+                label: "font-medium",
+              }}
+              size="lg"
+              placeholder="Selecciona un nivel"
+              startContent={<ChevronDownIcon className="w-4 h-4 text-default-400" />}
+            >
+              {NIVELES_GERENCIALES.map((n) => (
+                <SelectItem key={n.key} description={n.description}>
+                  {n.label}
+                </SelectItem>
+              ))}
+            </Select>
+
+            <div className="flex items-center h-full pt-2">
+              <Switch
+                isSelected={form.activo}
+                onValueChange={(v) => handleChange("activo", v)}
+                color="success"
+                size="lg"
+                classNames={{
+                  label: "font-medium",
+                }}
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{form.activo ? "Activo" : "Inactivo"}</span>
+                  <span className="text-xs text-default-400">
+                    {form.activo ? "Curso disponible" : "Curso no visible"}
+                  </span>
+                </div>
+              </Switch>
+            </div>
+          </div>
+
+          {/* ═══ SECCIÓN INSTRUCTOR ═══ */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <UserPlusIcon className="w-5 h-5 text-danger" />
+              <h3 className="text-lg font-semibold text-default-800">Instructor</h3>
+              <Chip size="sm" variant="flat" color="default" className="ml-2">
+                Opcional
+              </Chip>
+            </div>
+            <Divider className="bg-danger/20" />
+            
+            <div className="grid grid-cols-3 gap-3">
+              <Card
+                isPressable
+                onPress={() => handleModeChange("buscar")}
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
+                  instructorMode === "buscar"
+                    ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
+                    : "border-default-200 hover:border-danger/50 hover:shadow-md"
+                }`}
+              >
+                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
+                  <div className={`p-2 rounded-full transition-all ${
+                    instructorMode === "buscar" ? "bg-danger/10" : "bg-default-100"
+                  }`}>
+                    <MagnifyingGlassIcon
+                      className={`w-6 h-6 ${
+                        instructorMode === "buscar" ? "text-danger" : "text-default-500"
+                      }`}
+                    />
+                  </div>
+                  <span
+                    className={`text-sm font-semibold ${
+                      instructorMode === "buscar" ? "text-danger" : "text-default-600"
+                    }`}
+                  >
+                    Buscar existente
+                  </span>
+                  <span className="text-xs text-default-400">
+                    Selecciona de la base
+                  </span>
+                </CardBody>
+              </Card>
+
+              <Card
+                isPressable
+                onPress={() => handleModeChange("crear")}
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
+                  instructorMode === "crear"
+                    ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
+                    : "border-default-200 hover:border-danger/50 hover:shadow-md"
+                }`}
+              >
+                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
+                  <div className={`p-2 rounded-full transition-all ${
+                    instructorMode === "crear" ? "bg-danger/10" : "bg-default-100"
+                  }`}>
+                    <UserPlusIcon
+                      className={`w-6 h-6 ${
+                        instructorMode === "crear" ? "text-danger" : "text-default-500"
+                      }`}
+                    />
+                  </div>
+                  <span
+                    className={`text-sm font-semibold ${
+                      instructorMode === "crear" ? "text-danger" : "text-default-600"
+                    }`}
+                  >
+                    Crear nuevo
+                  </span>
+                  <span className="text-xs text-default-400">
+                    Registrar instructor
+                  </span>
+                </CardBody>
+              </Card>
+
+              <Card
+                isPressable
+                onPress={() => handleModeChange("despues")}
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
+                  instructorMode === "despues"
+                    ? "border-warning bg-warning-50 dark:bg-warning-900/20 shadow-lg shadow-warning/20"
+                    : "border-default-200 hover:border-warning/50 hover:shadow-md"
+                }`}
+              >
+                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
+                  <div className={`p-2 rounded-full transition-all ${
+                    instructorMode === "despues" ? "bg-warning/10" : "bg-default-100"
+                  }`}>
+                    <ClockIcon
+                      className={`w-6 h-6 ${
+                        instructorMode === "despues" ? "text-warning" : "text-default-500"
+                      }`}
+                    />
+                  </div>
+                  <span
+                    className={`text-sm font-semibold ${
+                      instructorMode === "despues" ? "text-warning" : "text-default-600"
+                    }`}
+                  >
+                    Asignar después
+                  </span>
+                  <span className="text-xs text-default-400">
+                    Pendiente
+                  </span>
+                </CardBody>
+              </Card>
+            </div>
+
+            {instructorMode === "buscar" && (
+              <div className="mt-4 animate-fade-in">
+                {instructorSeleccionado && form.instructorId ? (
+                  <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 p-4">
+                    <div className="p-1.5 bg-success-100 dark:bg-success-900/40 rounded-full">
+                      <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-success-700 dark:text-success-300">
+                        <span className="font-semibold">
+                          {instructorSeleccionado.nombre} {instructorSeleccionado.apellidoPaterno}
+                        </span>{" "}
+                        seleccionado como instructor
+                      </p>
+                      {instructorSeleccionado.email && (
+                        <p className="text-xs text-success-600 dark:text-success-400 mt-1">
+                          {instructorSeleccionado.email}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      color="success"
+                      onPress={() => {
+                        handleChange("instructorId", null);
+                        setInstructorSeleccionado(null);
+                        setInstructorSearch("");
+                        setInstructores([]);
+                      }}
+                      className="font-medium"
+                    >
+                      Cambiar
+                    </Button>
+                  </div>
+                ) : (
+                  <Autocomplete
+                    label="Buscar instructor"
+                    inputValue={instructorSearch}
+                    onInputChange={(val) => {
+                      setInstructorSearch(val);
+                      if (!val) {
+                        handleChange("instructorId", null);
+                        setInstructorSeleccionado(null);
+                      }
+                    }}
+                    items={instructores}
+                    selectedKey={form.instructorId ? String(form.instructorId) : null}
+                    onSelectionChange={(key) => {
+                      if (!key) {
+                        handleChange("instructorId", null);
+                        setInstructorSeleccionado(null);
+                        return;
+                      }
+                      const found = instructores.find((i) => String(i.id) === String(key));
+                      handleChange("instructorId", Number(key));
+                      setInstructorSeleccionado(found ?? null);
+                    }}
+                    isLoading={isLoadingInstructores}
+                    placeholder="Escribe el nombre del instructor..."
+                    isInvalid={!!errors.instructorId}
+                    errorMessage={errors.instructorId}
+                    size="lg"
+                    classNames={{
+                      label: "font-medium",
+                    }}
+                    startContent={<MagnifyingGlassIcon className="w-4 h-4 text-default-400" />}
+                  >
+                    {(item: any) => (
+                      <AutocompleteItem
+                        key={String(item.id)}
+                        textValue={`${item.nombre} ${item.apellidoPaterno} ${item.apellidoMaterno ?? ""}`.trim()}
+                        description={item.email}
+                      >
+                        {item.nombre} {item.apellidoPaterno} {item.apellidoMaterno ?? ""}
+                      </AutocompleteItem>
+                    )}
+                  </Autocomplete>
+                )}
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Error del servidor */}
-        {submitError && (
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-rose-50 border border-rose-200">
-            <span className="text-rose-500 mt-0.5"><Ic.AlertCircle /></span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-rose-700">Error</p>
-              <p className="text-xs text-rose-600">{submitError}</p>
-            </div>
-            <button onClick={() => setSubmitError(null)} className="text-rose-400">
-              <Ic.X />
-            </button>
-          </div>
-        )}
+            {instructorMode === "crear" && !form.instructorId && (
+              <div className="flex items-start gap-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 p-4 mt-4">
+                <div className="p-1.5 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                  <InformationCircleIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-primary-700 dark:text-primary-300">
+                    Creando nuevo instructor
+                  </p>
+                  <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
+                    Completa el formulario del instructor que se abrirá. Al guardarlo se asignará automáticamente a este curso.
+                  </p>
+                </div>
+              </div>
+            )}
 
-        {/* 1. INFORMACIÓN BÁSICA */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Book /> Información del curso
-          </h3>
-          
-          <div className="grid grid-cols-1 gap-4">
-            <Input
-              {...inp("nombre", "Nombre del curso")}
-              placeholder="Ej: Liderazgo Gerencial"
-              endContent={<FieldOk ok={!!form.nombre && !errors.nombre} />}
-            />
+            {instructorMode === "despues" && (
+              <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 p-4 mt-4">
+                <div className="p-1.5 bg-warning-100 dark:bg-warning-900/40 rounded-full">
+                  <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 dark:text-warning-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
+                    Instructor pendiente
+                  </p>
+                  <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                    El curso se guardará sin instructor. Recuerda asignarlo desde el detalle del curso antes de que inicie.
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <Textarea
-              label="Descripción"
-              placeholder="Describe los objetivos y contenido del curso..."
-              size="sm"
-              variant="bordered"
-              radius="lg"
-              value={form.descripcion ?? ""}
-              onBlur={() => handleBlur("descripcion")}
-              onChange={(e) => handleChange("descripcion", e.target.value)}
-              classNames={inputCN}
-              minRows={2}
-            />
-          </div>
-        </div>
-
-        {/* 2. INSTRUCTOR */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.User /> Instructor asignado
-          </h3>
-
-          <Select
-            label={<RequiredLabel label="Seleccionar instructor" required /> as any}
-            size="sm"
-            variant="bordered"
-            radius="lg"
-            placeholder="Buscar instructor..."
-            isInvalid={!!(touched.instructorId && errors.instructorId)}
-            errorMessage={touched.instructorId ? errors.instructorId : undefined}
-            onOpenChange={handleOpenInstructores}
-            isLoading={loadingInstructores}
-            selectedKeys={form.instructorId ? [form.instructorId.toString()] : []}
-            onChange={(e) => {
-              const value = e.target.value;
-              handleChange("instructorId", value ? Number(value) : null);
-              handleBlur("instructorId");
-            }}
-            classNames={{
-              trigger: [
-                "border border-slate-200 bg-white shadow-sm",
-                "data-[hover=true]:border-indigo-300",
-                "data-[open=true]:border-indigo-500",
-                "data-[invalid=true]:border-rose-400",
-              ].join(" "),
-              label: "text-slate-500 text-xs font-medium",
-              value: "text-slate-800 text-sm",
-            }}
-          >
-            {instructores.map(inst => (
-              <SelectItem key={inst.id} value={inst.id}>
-                {inst.nombre} {inst.apellidoPaterno} {inst.apellidoMaterno || ''}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
-
-        {/* 3. FECHAS Y HORARIO */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Calendar /> Fechas y horario
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DatePicker
-              label={<RequiredLabel label="Fecha de inicio" required /> as any}
-              size="sm"
-              variant="bordered"
-              radius="lg"
-              isInvalid={!!(touched.fechaInicio && errors.fechaInicio)}
-              errorMessage={touched.fechaInicio ? errors.fechaInicio : undefined}
-              onChange={(date) => {
-                handleChange("fechaInicio", date?.toString());
-                setTouched(p => ({ ...p, fechaInicio: true }));
-              }}
-              classNames={inputCN}
-            />
-
-            <DatePicker
-              label={<RequiredLabel label="Fecha de fin" required /> as any}
-              size="sm"
-              variant="bordered"
-              radius="lg"
-              isInvalid={!!(touched.fechaFin && errors.fechaFin)}
-              errorMessage={touched.fechaFin ? errors.fechaFin : undefined}
-              onChange={(date) => {
-                handleChange("fechaFin", date?.toString());
-                setTouched(p => ({ ...p, fechaFin: true }));
-              }}
-              classNames={inputCN}
-            />
-
-            <Input
-              {...inp("horario", "Horario")}
-              placeholder="Ej: Lunes y Miércoles 9-11am"
-              endContent={<FieldOk ok={!!form.horario && !errors.horario} />}
-            />
-
-            <Input
-              {...inp("duracion", "Duración (horas)", true, { type: "number" })}
-              placeholder="40"
-              endContent={<FieldOk ok={!!form.duracion && !errors.duracion} />}
-            />
-          </div>
-        </div>
-
-        {/* 4. PRECIOS */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Dollar /> Precios
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              {...inp("precioAfiliado", "Precio Afiliado", true, { 
-                type: "number",
-                startContent: <span className="text-slate-400">$</span>
-              })}
-              placeholder="0.00"
-            />
-            <Input
-              {...inp("precioPublico", "Precio Público", true, { 
-                type: "number",
-                startContent: <span className="text-slate-400">$</span>
-              })}
-              placeholder="0.00"
-            />
-            <Input
-              {...inp("precioEstudiante", "Precio Estudiante", true, { 
-                type: "number",
-                startContent: <span className="text-slate-400">$</span>
-              })}
-              placeholder="0.00"
-            />
-          </div>
-        </div>
-
-        {/* 5. DETALLES ADICIONALES */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Building /> Detalles adicionales
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              {...inp("nivelGerencial", "Nivel gerencial")}
-              placeholder="Ej: Mandos medios, Alta dirección"
-              endContent={<FieldOk ok={!!form.nivelGerencial && !errors.nivelGerencial} />}
-            />
-
-            <Input
-              {...inp("aula", "Aula", false)}
-              placeholder="Ej: Salón 101, Virtual"
-              endContent={form.aula && !errors.aula ? <FieldOk ok /> : null}
-            />
-          </div>
-
-          {/* Estado activo/inactivo */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Curso activo</p>
-              <p className="text-[11px] text-slate-500">
-                Los cursos inactivos no aparecen en las listas de inscripción
+            {!instructorMode && (
+              <p className="text-sm text-default-400 text-center py-4 italic">
+                Selecciona una opción para continuar con la asignación del instructor
               </p>
-            </div>
-            <Switch
-              isSelected={form.activo ?? true}
-              onValueChange={(val) => handleChange("activo", val)}
-              size="sm"
-              color="success"
-            />
+            )}
           </div>
-        </div>
 
-        <div className="h-4" /> {/* Espacio extra */}
-      </div>
-    </ModalForm>
+          {/* Botones de acción */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-default-200 dark:border-default-800">
+            <Button
+              color="default"
+              variant="light"
+              onPress={onClose}
+              size="lg"
+              className="font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              color="danger"
+              size="lg"
+              isLoading={isLoading}
+              className="font-medium px-8"
+              startContent={!isLoading && <AcademicCapIcon className="w-5 h-5" />}
+            >
+              {cursoToEdit ? "Actualizar curso" : "Crear curso"}
+            </Button>
+          </div>
+        </form>
+      </ModalForm>
+
+      <InstructorModal
+        isOpen={modalInstructorAbierto}
+        onClose={() => {
+          setModalInstructorAbierto(false);
+          if (!form.instructorId) setInstructorMode(null);
+        }}
+        onSuccess={handleInstructorCreado}
+      />
+    </>
   );
 }

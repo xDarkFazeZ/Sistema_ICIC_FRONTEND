@@ -15,7 +15,7 @@ import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 
 import { buscarEmpresas } from "../../../services/empresaService";
-import { buscarCursos } from "../../../services/cursoService";
+//import { buscarCursos } from "../../../services/cursoService";
 import { crearParticipante } from "../../../services/participanteService";
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
