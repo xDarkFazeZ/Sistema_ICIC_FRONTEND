@@ -20,35 +20,47 @@ import {
   Tooltip,
 } from "@heroui/react";
 
-import { EllipsisVerticalIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { EllipsisVerticalIcon, PlusIcon, UserPlusIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 import CursoModal from "../../components/modals/Cursos/cursosModal";
 import CursoDetalleModal from "../../components/modals/Cursos/cursosDetalleModal";
-
+import ParticipanteModal from "../../components/modals/Participante/participanteModal";
+import SiguientePasoModal, { type SiguientePasoOpcion } from "../../components/common/siguientePasoModal";
 import {
   listarCursos,
   crearCurso,
+  actualizarCurso,
   eliminarCurso,
   activarCurso,
   desactivarCurso,
 } from "../../services/cursoService";
 
-// ✅ Nombre del instructor placeholder — debe coincidir con el de la BD
 const INSTRUCTOR_PLACEHOLDER = "Por Asignar";
 
 export default function Cursos() {
-  const [cursos, setCursos]           = useState<any[]>([]);
-  const [loading, setLoading]         = useState(false);
+  const [cursos, setCursos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
-  const [page, setPage]               = useState(1);
-  const [totalPages, setTotalPages]   = useState(1);
-  const [search, setSearch]           = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
 
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
-  const [detalleAbierto, setDetalleAbierto]       = useState(false);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
+  const [cursoAEditar, setCursoAEditar] = useState<any | null>(null);
+
+  // ── Workflow de post-creación ────────────────────────────────
+  const [siguientePasoModalAbierto, setSiguientePasoModalAbierto] = useState(false);
+  const [modalParticipanteAbierto, setModalParticipanteAbierto] = useState(false);
+  const [cursoActivoId, setCursoActivoId] = useState<number | null>(null);
+  const [cursoRecienCreado, setCursoRecienCreado] = useState<any | null>(null);
+  const [opcionesSiguientePaso, setOpcionesSiguientePaso] = useState<SiguientePasoOpcion[]>([]);
+  const [tituloSiguientePaso, setTituloSiguientePaso] = useState("¿Qué deseas hacer ahora?");
+  const [subtituloSiguientePaso, setSubtituloSiguientePaso] = useState<string | undefined>(undefined);
 
   const cargarCursos = async () => {
     try {
@@ -67,14 +79,96 @@ export default function Cursos() {
     cargarCursos();
   }, [page, search]);
 
+  // ── Crear curso ──────────────────────────────────────────────
   const handleCrearCurso = async (data: any) => {
     try {
       setModalLoading(true);
-      await crearCurso(data);
+      const cursoCreado = await crearCurso(data);
+
       setModalCursoAbierto(false);
       cargarCursos();
+
+      setCursoRecienCreado(cursoCreado);
+      setCursoActivoId(cursoCreado.id);
+
+      setTituloSiguientePaso("¡Curso creado exitosamente!");
+      setSubtituloSiguientePaso(cursoCreado.nombre);
+      setOpcionesSiguientePaso([
+        {
+          label: "Asignar participantes",
+          descripcion: "Agrega participantes a este curso ahora",
+          icono: <UserPlusIcon className="w-5 h-5 text-white" />,
+          color: "from-indigo-500 to-indigo-600",
+          onClick: () => {
+            setModalParticipanteAbierto(true);
+          },
+        },
+        {
+          label: "Ver detalle del curso",
+          descripcion: "Revisa la información del curso creado",
+          icono: <CheckCircleIcon className="w-5 h-5 text-white" />,
+          color: "from-emerald-400 to-teal-500",
+          onClick: () => {
+            setCursoSeleccionado(cursoCreado);
+            setDetalleAbierto(true);
+            setCursoActivoId(null);
+            setCursoRecienCreado(null);
+          },
+        },
+      ]);
+      setSiguientePasoModalAbierto(true);
+
     } catch (error) {
       console.error("Error al crear curso:", error);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // ── Participante creado → preguntar si asignar otro ──────────
+  const handleParticipanteCreado = (respuesta: any) => {
+    setModalParticipanteAbierto(false);
+
+    // El backend devuelve { success, data, message } — extraemos el objeto real
+    const p = respuesta?.data ?? respuesta;
+    const nombreCompleto = `${p?.nombre ?? ""} ${p?.apellidoPaterno ?? ""}`.trim();
+
+    setTituloSiguientePaso("¿Asignar otro participante?");
+    setSubtituloSiguientePaso(nombreCompleto);
+    setOpcionesSiguientePaso([
+      {
+        label: "Sí, asignar otro",
+        descripcion: "Agregar un nuevo participante al mismo curso",
+        icono: <UserPlusIcon className="w-5 h-5 text-white" />,
+        color: "from-emerald-400 to-teal-500",
+        onClick: () => {
+          setModalParticipanteAbierto(true);
+        },
+      },
+      {
+        label: "No, finalizar",
+        descripcion: "Volver a la lista de cursos",
+        icono: <CheckCircleIcon className="w-5 h-5 text-white" />,
+        color: "from-slate-400 to-slate-500",
+        onClick: () => {
+          setCursoActivoId(null);
+          setCursoRecienCreado(null);
+        },
+      },
+    ]);
+    setSiguientePasoModalAbierto(true);
+  };
+
+  // ── Editar curso ─────────────────────────────────────────────
+  const handleEditarCurso = async (data: any) => {
+    try {
+      setModalLoading(true);
+      await actualizarCurso(cursoAEditar.id, data);
+      setModalCursoAbierto(false);
+      setCursoAEditar(null);
+      cargarCursos();
+    } catch (error) {
+      console.error("Error al actualizar curso:", error);
     } finally {
       setModalLoading(false);
     }
@@ -95,7 +189,6 @@ export default function Cursos() {
     cargarCursos();
   };
 
-  // ✅ Determina si un curso no tiene instructor asignado
   const sinInstructor = (curso: any) =>
     !curso.instructor || curso.instructor.nombre === INSTRUCTOR_PLACEHOLDER;
 
@@ -107,7 +200,10 @@ export default function Cursos() {
         <Button
           color="danger"
           startContent={<PlusIcon className="w-4 h-4" />}
-          onPress={() => setModalCursoAbierto(true)}
+          onPress={() => {
+            setCursoAEditar(null);
+            setModalCursoAbierto(true);
+          }}
         >
           Nuevo Curso
         </Button>
@@ -161,7 +257,6 @@ export default function Cursos() {
             >
               {(curso) => (
                 <TableRow key={curso.id}>
-                  {/* Nombre */}
                   <TableCell
                     className="cursor-pointer font-medium"
                     onClick={() => {
@@ -172,7 +267,6 @@ export default function Cursos() {
                     {curso.nombre}
                   </TableCell>
 
-                  {/* Instructor — muestra advertencia si es placeholder */}
                   <TableCell>
                     {sinInstructor(curso) ? (
                       <Tooltip
@@ -183,9 +277,7 @@ export default function Cursos() {
                           color="warning"
                           variant="flat"
                           size="sm"
-                          startContent={
-                            <ExclamationTriangleIcon className="w-3 h-3" />
-                          }
+                          startContent={<ExclamationTriangleIcon className="w-3 h-3" />}
                           className="cursor-default"
                         >
                           Sin asignar
@@ -199,22 +291,16 @@ export default function Cursos() {
                     )}
                   </TableCell>
 
-                  {/* Fecha inicio */}
                   <TableCell>
                     {new Date(curso.fechaInicio).toLocaleDateString()}
                   </TableCell>
 
-                  {/* Estado activo */}
                   <TableCell>
-                    <Chip
-                      color={curso.activo ? "success" : "default"}
-                      variant="flat"
-                    >
+                    <Chip color={curso.activo ? "success" : "default"} variant="flat">
                       {curso.activo ? "Activo" : "Inactivo"}
                     </Chip>
                   </TableCell>
 
-                  {/* Acciones */}
                   <TableCell>
                     <div className="flex justify-center">
                       <Dropdown>
@@ -223,8 +309,16 @@ export default function Cursos() {
                             <EllipsisVerticalIcon className="w-5 h-5" />
                           </Button>
                         </DropdownTrigger>
-
                         <DropdownMenu aria-label="Acciones del curso">
+                          <DropdownItem
+                            key="editar"
+                            onPress={() => {
+                              setCursoAEditar(curso);
+                              setModalCursoAbierto(true);
+                            }}
+                          >
+                            Editar
+                          </DropdownItem>
                           <DropdownItem
                             key="detalle"
                             onPress={() => {
@@ -234,14 +328,12 @@ export default function Cursos() {
                           >
                             Ver detalle
                           </DropdownItem>
-
                           <DropdownItem
                             key="toggle"
                             onPress={() => handleToggleEstado(curso)}
                           >
                             {curso.activo ? "Desactivar" : "Activar"}
                           </DropdownItem>
-
                           <DropdownItem
                             key="delete"
                             className="text-danger"
@@ -261,20 +353,43 @@ export default function Cursos() {
         </CardBody>
       </Card>
 
-      {/* MODALES */}
+      {/* ── MODALES ── */}
       <CursoModal
         isOpen={modalCursoAbierto}
-        onClose={() => setModalCursoAbierto(false)}
-        onSubmit={handleCrearCurso}
+        onClose={() => {
+          setModalCursoAbierto(false);
+          setCursoAEditar(null);
+        }}
+        onSubmit={cursoAEditar ? handleEditarCurso : handleCrearCurso}
+        cursoToEdit={cursoAEditar}
         isLoading={modalLoading}
-        // Aquí puedes pasar onCrearInstructor si tienes un modal de instructor separado
-        // onCrearInstructor={() => setModalInstructorAbierto(true)}
       />
 
       <CursoDetalleModal
         isOpen={detalleAbierto}
         onClose={() => setDetalleAbierto(false)}
         curso={cursoSeleccionado}
+      />
+
+      <ParticipanteModal
+        isOpen={modalParticipanteAbierto}
+        onClose={() => {
+          setModalParticipanteAbierto(false);
+        }}
+        onSuccess={handleParticipanteCreado}
+        cursoIdParaAsignar={cursoActivoId}
+      />
+
+      <SiguientePasoModal
+        isOpen={siguientePasoModalAbierto}
+        onClose={() => {
+          setSiguientePasoModalAbierto(false);
+          setCursoActivoId(null);
+          setCursoRecienCreado(null);
+        }}
+        titulo={tituloSiguientePaso}
+        subtitulo={subtituloSiguientePaso}
+        opciones={opcionesSiguientePaso}
       />
     </div>
   );

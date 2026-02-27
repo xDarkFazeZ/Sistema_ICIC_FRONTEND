@@ -8,21 +8,30 @@ import {
   Chip,
   Avatar,
   Spinner,
+  Card,
+  CardBody,
+  Divider,
 } from "@heroui/react";
 import { DatePicker } from "@heroui/react";
-import { CalendarDate } from "@internationalized/date";
+import { CalendarDate, parseDate } from "@internationalized/date";
 import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 
 import { buscarEmpresas } from "../../../services/empresaService";
-//import { buscarCursos } from "../../../services/cursoService";
+import { listarCursos, obtenerCursoPorId } from "../../../services/cursoService";
 import { crearParticipante } from "../../../services/participanteService";
 
+import {
+  MagnifyingGlassIcon,
+  ClockIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
+import {
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/solid";
+
 // ── Tokens ───────────────────────────────────────────────────────────────────
-const C = {
-  accent: "from-blue-600 to-indigo-600",
-  accentSolid: "#4f46e5",
-};
+const C = { accentSolid: "#4f46e5" };
 
 // ── Iconos SVG inline ─────────────────────────────────────────────────────────
 const Ic = {
@@ -77,58 +86,40 @@ const Ic = {
       <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
     </svg>
   ),
-  Warn: () => (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
-  ),
 };
+
+// ── Tipos de modo ─────────────────────────────────────────────────────────────
+type EmpresaMode = "buscar" | "despues" | null;
+type CursoMode   = "buscar" | "despues" | null;
 
 // ── Validadores ───────────────────────────────────────────────────────────────
 const validators: Record<string, (v: any, form?: Record<string, any>) => string | null> = {
   nombre:
-    v => !v || v.trim().length < 2
-      ? "Requerido · Mínimo 2 caracteres"
-      : v.length > 50 ? "Máximo 50 caracteres" : null,
-
+    v => !v || v.trim().length < 2 ? "Requerido · Mínimo 2 caracteres" : v.length > 50 ? "Máximo 50 caracteres" : null,
   apellidoPaterno:
-    v => !v || v.trim().length < 2
-      ? "Requerido · Mínimo 2 caracteres"
-      : v.length > 50 ? "Máximo 50 caracteres" : null,
-
+    v => !v || v.trim().length < 2 ? "Requerido · Mínimo 2 caracteres" : v.length > 50 ? "Máximo 50 caracteres" : null,
   fechaNacimiento:
     v => !v ? "La fecha de nacimiento es requerida" : null,
-
   apellidoMaterno:
     v => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : v && v.length > 50 ? "Máximo 50 caracteres" : null,
-
   celular:
     v => v && !/^[0-9]{10}$/.test(v) ? "Debe tener exactamente 10 dígitos" : null,
-
   correo:
     v => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Formato de correo inválido" : null,
-
   curp:
     v => v && !/^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(v) ? "CURP inválida · 18 caracteres" : null,
-
   rfc:
     v => v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v) ? "RFC inválido · 12-13 caracteres" : null,
-
   calle:
     v => v && v.trim().length < 3 ? "Mínimo 3 caracteres" : v && v.length > 100 ? "Máximo 100 caracteres" : null,
-
   colonia:
     v => v && v.trim().length < 3 ? "Mínimo 3 caracteres" : v && v.length > 100 ? "Máximo 100 caracteres" : null,
-
   cp:
     v => v && !/^\d{5}$/.test(v) ? "5 dígitos numéricos requeridos" : null,
-
   empresaId:
-    (v, form) => {
-      if (form?.esAfiliado && !v) return "Requerido cuando el participante es afiliado";
-      return null;
-    },
+    (v, form) => form?.esAfiliado && form?.empresaMode === "buscar" && !v
+      ? "Requerido cuando el participante es afiliado"
+      : null,
 };
 
 const REQUIRED_FIELDS = ["nombre", "apellidoPaterno", "fechaNacimiento"];
@@ -140,7 +131,7 @@ function RequiredLabel({ label, required }: { label: string; required?: boolean 
       {label}
       {required
         ? <span className="text-rose-500 ml-0.5">*</span>
-        : <span className="text-slate-300 text-[10px] ml-1.5 font-normal tracking-wide">(opcional)</span>}
+        : <span className="text-slate-300 text-[10px] ml-1.5 font-normal">(opcional)</span>}
     </span>
   );
 }
@@ -151,27 +142,62 @@ function FieldOk({ ok }: { ok: boolean }) {
 
 function OptionalBanner({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 mb-5">
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 mb-3">
       <span className="text-slate-400 flex-shrink-0"><Ic.Info /></span>
       <p className="text-[11px] text-slate-500">{text}</p>
     </div>
   );
 }
 
-// ── Props del modal ──────────────────────────────────────────────────────────
+function ModeCard({ active, color = "danger", icon, label, description, onPress }: {
+  active: boolean;
+  color?: "danger" | "warning";
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  onPress: () => void;
+}) {
+  const activeClass = color === "danger"
+    ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
+    : "border-warning bg-warning-50 dark:bg-warning-900/20 shadow-lg shadow-warning/20";
+  const iconColor = color === "danger" ? "text-danger" : "text-warning";
+  const textColor = color === "danger" ? "text-danger" : "text-warning";
+
+  return (
+    <Card
+      isPressable
+      onPress={onPress}
+      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
+        active ? activeClass : "border-default-200 hover:border-default-400 hover:shadow-md"
+      }`}
+    >
+      <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
+        <div className={`p-2 rounded-full ${active ? `bg-${color}/10` : "bg-default-100"}`}>
+          <span className={active ? iconColor : "text-default-500"}>{icon}</span>
+        </div>
+        <span className={`text-sm font-semibold ${active ? textColor : "text-default-600"}`}>{label}</span>
+        <span className="text-xs text-default-400">{description}</span>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface ParticipanteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (participante: any) => void;
   participanteToEdit?: any;
+  cursoIdParaAsignar?: number | null; // NUEVA PROP
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ParticipanteModal({ 
   isOpen, 
   onClose, 
-  onSuccess,
-  participanteToEdit 
+  onSuccess, 
+  participanteToEdit,
+  cursoIdParaAsignar // NUEVA PROP
 }: ParticipanteModalProps) {
   const [form, setForm] = useState<Record<string, any>>({ esAfiliado: false });
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -179,92 +205,131 @@ export default function ParticipanteModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Empresa
+  const [empresaMode, setEmpresaMode] = useState<EmpresaMode>(null);
   const [empresas, setEmpresas] = useState<any[]>([]);
-  const [cursos, setCursos] = useState<any[]>([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
-  const [loadingCursos, setLoadingCursos] = useState(false);
+  const [empresaSearch, setEmpresaSearch] = useState("");
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<any | null>(null);
 
-  const empresasCargadas = useRef(false);
-  const cursosCargados = useRef(false);
+  // Curso
+  const [cursoMode, setCursoMode] = useState<CursoMode>(null);
+  const [cursos, setCursos] = useState<any[]>([]);
+  const [loadingCursos, setLoadingCursos] = useState(false);
+  const [cursoSearch, setCursoSearch] = useState("");
+  const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
+
   const timeouts = useRef<Record<string, any>>({});
 
-  // Reset form when modal opens/closes
+  // ── Reset y carga de curso pre-seleccionado ─────────────────────────────
   useEffect(() => {
     if (!isOpen) {
       setForm({ esAfiliado: false });
       setErrors({});
       setTouched({});
       setSubmitError(null);
-      empresasCargadas.current = false;
-      cursosCargados.current = false;
+      setEmpresaMode(null); 
+      setEmpresas([]); 
+      setEmpresaSearch(""); 
+      setEmpresaSeleccionada(null);
+      setCursoMode(null);   
+      setCursos([]);   
+      setCursoSearch("");   
+      setCursoSeleccionado(null);
     } else if (participanteToEdit) {
       setForm(participanteToEdit);
-    }
-  }, [isOpen, participanteToEdit]);
-
-  // ── Carga inicial de listas ───────────────────────────────────────────────
-  const handleOpenEmpresas = async () => {
-    if (empresasCargadas.current) return;
-    setLoadingEmpresas(true);
-    try {
-      setEmpresas(await buscarEmpresas(""));
-      empresasCargadas.current = true;
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingEmpresas(false);
-    }
-  };
-
-  const handleOpenCursos = async () => {
-    if (cursosCargados.current) return;
-    setLoadingCursos(true);
-    try {
-      setCursos(await buscarCursos(""));
-      cursosCargados.current = true;
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingCursos(false);
-    }
-  };
-
-  // ── Búsqueda debounced ────────────────────────────────────────────────────
-  const debounce = (key: string, fn: (v: string) => void, delay = 350) =>
-    (value: string) => {
-      clearTimeout(timeouts.current[key]);
-      if (!value.trim()) {
-        if (key === "emp" && empresasCargadas.current) buscarEmpresas("").then(setEmpresas);
-        if (key === "cur" && cursosCargados.current) buscarCursos("").then(setCursos);
-        return;
+      if (participanteToEdit.cursoId) {
+        setCursoMode("buscar");
+        // Cargar el curso para mostrarlo
+        const cargarCursoEdit = async () => {
+          try {
+            const curso = await obtenerCursoPorId(participanteToEdit.cursoId);
+            setCursoSeleccionado(curso);
+            setCursoSearch(curso.nombre);
+            setCursos([curso]);
+          } catch (error) {
+            console.error("Error al cargar curso para edición:", error);
+          }
+        };
+        cargarCursoEdit();
       }
-      timeouts.current[key] = setTimeout(() => fn(value), delay);
-    };
+    } else if (cursoIdParaAsignar) {
+      // NUEVA LÓGICA: Si nos dan un cursoId, lo buscamos y seleccionamos automáticamente
+      const cargarYSeleccionarCurso = async () => {
+        setCursoMode("buscar");
+        try {
+          const curso = await obtenerCursoPorId(cursoIdParaAsignar);
+          setCursoSeleccionado(curso);
+          setForm(prev => ({ ...prev, cursoId: curso.id }));
+          setCursoSearch(curso.nombre);
+          setCursos([curso]);
+        } catch (error) {
+          console.error("Error al cargar curso para asignar:", error);
+        }
+      };
+      cargarYSeleccionarCurso();
+    }
+  }, [isOpen, participanteToEdit, cursoIdParaAsignar]);
 
-  const buscarEmpresasDebounced = debounce("emp", async v => setEmpresas(await buscarEmpresas(v)));
-  const buscarCursosDebounced = debounce("cur", async v => setCursos(await buscarCursos(v)));
+  // ── Debounce empresas ─────────────────────────────────────────────────────
+  const buscarEmpresasDebounced = (value: string) => {
+    setEmpresaSearch(value);
+    clearTimeout(timeouts.current["emp"]);
+    if (!value || value.trim().length < 2) { setEmpresas([]); return; }
+    timeouts.current["emp"] = setTimeout(async () => {
+      try { setLoadingEmpresas(true); setEmpresas(await buscarEmpresas(value)); }
+      finally { setLoadingEmpresas(false); }
+    }, 350);
+  };
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Debounce cursos ───────────────────────────────────────────────────────
+  const buscarCursosDebounced = (value: string) => {
+    setCursoSearch(value);
+    clearTimeout(timeouts.current["cur"]);
+    if (!value || value.trim().length < 2) { setCursos([]); return; }
+    timeouts.current["cur"] = setTimeout(async () => {
+      try {
+        setLoadingCursos(true);
+        const res = await listarCursos({ search: value, limit: 20 });
+        setCursos(res.data ?? []);
+      } finally { setLoadingCursos(false); }
+    }, 350);
+  };
+
+  // ── Cambio de modo ────────────────────────────────────────────────────────
+  const handleEmpresaMode = (mode: EmpresaMode) => {
+    if (mode === empresaMode) return;
+    setEmpresaMode(mode);
+    setEmpresas([]); setEmpresaSearch(""); setEmpresaSeleccionada(null);
+    handleChange("empresaId", null);
+  };
+
+  const handleCursoMode = (mode: CursoMode) => {
+    if (mode === cursoMode) return;
+    setCursoMode(mode);
+    setCursos([]); setCursoSearch(""); setCursoSeleccionado(null);
+    handleChange("cursoId", null);
+  };
+
+  // ── Form helpers ──────────────────────────────────────────────────────────
   const handleChange = (field: string, value: any) => {
     const v = value === "" ? null : value;
     const updated = { ...form, [field]: v };
     setForm(updated);
     if (touched[field] && validators[field])
-      setErrors(p => ({ ...p, [field]: validators[field](v, updated) }));
-    if (field === "esAfiliado" && touched.empresaId)
-      setErrors(p => ({ ...p, empresaId: validators.empresaId?.(form.empresaId, updated) ?? null }));
+      setErrors(p => ({ ...p, [field]: validators[field](v, { ...updated, empresaMode }) }));
   };
 
   const handleBlur = (field: string) => {
     setTouched(p => ({ ...p, [field]: true }));
     if (validators[field])
-      setErrors(p => ({ ...p, [field]: validators[field](form[field], form) }));
+      setErrors(p => ({ ...p, [field]: validators[field](form[field], { ...form, empresaMode }) }));
   };
 
   const validateAll = () => {
     const e: Record<string, string | null> = {};
     for (const [field, validate] of Object.entries(validators)) {
-      const err = validate(form[field], form);
+      const err = validate(form[field], { ...form, empresaMode });
       if (err) e[field] = err;
     }
     setErrors(e);
@@ -275,13 +340,9 @@ export default function ParticipanteModal({
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!validateAll()) {
-      sileo.warning({
-        title: "Campos con errores",
-        description: "Revisa los campos marcados en rojo antes de continuar.",
-      });
+      sileo.warning({ title: "Campos con errores", description: "Revisa los campos marcados antes de continuar." });
       return;
     }
-
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -289,44 +350,39 @@ export default function ParticipanteModal({
     for (const [k, v] of Object.entries(form)) {
       if (k === "esAfiliado") continue;
       if (v === null || v === undefined || v === "") continue;
-      if ((k === "empresaId") && isNaN(Number(v))) continue;
+      if (k === "empresaId" && isNaN(Number(v))) continue;
+      if (k === "cursoId" && isNaN(Number(v))) continue;
       payload[k] = v;
     }
+    if (empresaMode === "despues") delete payload.empresaId;
+    if (cursoMode === "despues") delete payload.cursoId;
 
     try {
       const response = await crearParticipante(payload);
-      sileo.success({
-        title: "¡Registro exitoso!",
-        description: "El participante fue guardado correctamente.",
-      });
+      sileo.success({ title: "¡Registro exitoso!", description: "El participante fue guardado correctamente." });
       onSuccess?.(response);
       onClose();
     } catch (err: any) {
       const data = err?.response?.data;
       const msg = data?.message ?? data?.error ?? data ?? err?.message ?? "Error desconocido";
       setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg, null, 2));
-      sileo.error({
-        title: "Error al registrar",
-        description: "Revisa los datos e inténtalo de nuevo.",
-      });
+      sileo.error({ title: "Error al registrar", description: "Revisa los datos e inténtalo de nuevo." });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Progreso ─────────────────────────────────────────────────
-  const filled = REQUIRED_FIELDS.filter(f => form[f] !== null && form[f] !== undefined && form[f] !== "").length;
+  // ── Progreso ──────────────────────────────────────────────────────────────
+  const filled = REQUIRED_FIELDS.filter(f => form[f] != null && form[f] !== "").length;
   const extraRequired = form.esAfiliado ? 1 : 0;
   const extraFilled = form.esAfiliado && form.empresaId ? 1 : 0;
-  const totalRequired = REQUIRED_FIELDS.length + extraRequired;
-  const totalFilled = filled + extraFilled;
-  const pct = Math.round((totalFilled / totalRequired) * 100);
+  const pct = Math.round(((filled + extraFilled) / (REQUIRED_FIELDS.length + extraRequired)) * 100);
 
-  // ── Estilos ───────────────────────────────────────────────────
+  // ── Estilos compartidos ───────────────────────────────────────────────────
   const inputCN = {
     inputWrapper: [
       "border border-slate-200 bg-white shadow-sm transition-all duration-200",
-      "data-[hover=true]:border-indigo-300 data-[hover=true]:shadow-indigo-50",
+      "data-[hover=true]:border-indigo-300",
       "data-[focus=true]:border-indigo-500 data-[focus=true]:shadow-md data-[focus=true]:shadow-indigo-100/60",
       "data-[invalid=true]:border-rose-400 data-[invalid=true]:bg-rose-50/30",
     ].join(" "),
@@ -335,16 +391,9 @@ export default function ParticipanteModal({
     errorMessage: "text-rose-500 text-[11px] font-medium mt-1",
   };
 
-  const inp = (
-    field: string,
-    label: string,
-    required = false,
-    extra: any = {}
-  ) => ({
+  const inp = (field: string, label: string, required = false, extra: any = {}) => ({
     label: <RequiredLabel label={label} required={required} /> as any,
-    size: "sm" as const,
-    variant: "bordered" as const,
-    radius: "lg" as const,
+    size: "sm" as const, variant: "bordered" as const, radius: "lg" as const,
     isInvalid: !!(touched[field] && errors[field]),
     errorMessage: touched[field] ? errors[field] ?? undefined : undefined,
     onBlur: () => handleBlur(field),
@@ -358,20 +407,20 @@ export default function ParticipanteModal({
     listboxWrapper: "shadow-2xl rounded-2xl border border-slate-100 overflow-hidden",
     selectorButton: "text-slate-400 hover:text-indigo-500 transition-colors",
   };
-
   const acInp = {
     classNames: {
       inputWrapper: [
-        "border border-slate-200 bg-white shadow-sm transition-all duration-200",
+        "border border-slate-200 bg-white shadow-sm",
         "data-[hover=true]:border-indigo-300",
-        "data-[focus=true]:border-indigo-500 data-[focus=true]:shadow-md data-[focus=true]:shadow-indigo-100/60",
-        "data-[invalid=true]:border-rose-400 data-[invalid=true]:bg-rose-50/30",
+        "data-[focus=true]:border-indigo-500 data-[focus=true]:shadow-md",
+        "data-[invalid=true]:border-rose-400",
       ].join(" "),
       label: "text-slate-500 text-xs font-medium",
       input: "text-slate-800 text-sm font-medium",
     },
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ModalForm
       isOpen={isOpen}
@@ -379,11 +428,14 @@ export default function ParticipanteModal({
       title={participanteToEdit ? "Editar Participante" : "Nuevo Participante"}
       size="3xl"
       isLoading={isSubmitting}
+      onSubmit={handleSubmit}
+      submitText={participanteToEdit ? "Actualizar participante" : "Crear participante"}
     >
-      <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
-        {/* Progreso opcional - lo puedes quitar si quieres */}
+      <div className="space-y-6 px-1">
+
+        {/* Barra de progreso */}
         {!participanteToEdit && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 sticky top-0 z-10 bg-white/90 backdrop-blur-sm">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200 sticky top-0 z-10">
             <div className="relative w-10 h-10 flex-shrink-0">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
                 <circle cx="20" cy="20" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
@@ -403,8 +455,8 @@ export default function ParticipanteModal({
             <div className="flex-1">
               <p className="text-xs font-medium text-slate-600">Progreso de campos requeridos</p>
               <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-emerald-500" : "bg-indigo-500"}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -412,49 +464,31 @@ export default function ParticipanteModal({
           </div>
         )}
 
-        {/* Error de servidor */}
+        {/* Error servidor */}
         {submitError && (
           <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200">
             <span className="text-rose-500 flex-shrink-0 mt-0.5"><Ic.AlertCircle /></span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-rose-700">Error del servidor</p>
-              <pre className="text-xs text-rose-600 mt-0.5 whitespace-pre-wrap break-words font-mono">
-                {submitError}
-              </pre>
+              <pre className="text-xs text-rose-600 mt-0.5 whitespace-pre-wrap break-words font-mono">{submitError}</pre>
             </div>
-            <button onClick={() => setSubmitError(null)} className="text-rose-400 hover:text-rose-600">
-              <Ic.X />
-            </button>
+            <button onClick={() => setSubmitError(null)} className="text-rose-400 hover:text-rose-600"><Ic.X /></button>
           </div>
         )}
 
-        {/* 1 · DATOS PERSONALES */}
+        {/* ══ 1. DATOS PERSONALES ══ */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.User /> Datos personales
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2"><Ic.User /> Datos personales</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              {...inp("nombre", "Nombre", true)}
-              value={form.nombre ?? ""}
-              endContent={<FieldOk ok={!!form.nombre && !errors.nombre} />}
-            />
-            <Input
-              {...inp("apellidoPaterno", "Apellido Paterno", true)}
-              value={form.apellidoPaterno ?? ""}
-              endContent={<FieldOk ok={!!form.apellidoPaterno && !errors.apellidoPaterno} />}
-            />
-            <Input
-              {...inp("apellidoMaterno", "Apellido Materno", false)}
-              value={form.apellidoMaterno ?? ""}
-            />
+            <Input {...inp("nombre", "Nombre", true)} value={form.nombre ?? ""}
+              endContent={<FieldOk ok={!!form.nombre && !errors.nombre} />} />
+            <Input {...inp("apellidoPaterno", "Apellido Paterno", true)} value={form.apellidoPaterno ?? ""}
+              endContent={<FieldOk ok={!!form.apellidoPaterno && !errors.apellidoPaterno} />} />
+            <Input {...inp("apellidoMaterno", "Apellido Materno")} value={form.apellidoMaterno ?? ""} />
             <DatePicker
               label={<RequiredLabel label="Fecha de Nacimiento" required /> as any}
-              size="sm"
-              variant="bordered"
-              radius="lg"
-              locale="es-MX"
-              showMonthAndYearPickers
+              size="sm" variant="bordered" radius="lg" locale="es-MX" showMonthAndYearPickers
+              value={form.fechaNacimiento ? parseDate(form.fechaNacimiento) : null}
               isInvalid={!!(touched.fechaNacimiento && errors.fechaNacimiento)}
               errorMessage={touched.fechaNacimiento ? errors.fechaNacimiento ?? undefined : undefined}
               onChange={(date: CalendarDate | null) => {
@@ -463,20 +497,10 @@ export default function ParticipanteModal({
               }}
               classNames={inputCN}
             />
-            <Input
-              {...inp("celular", "Celular", false)}
-              value={form.celular ?? ""}
-              maxLength={10}
-              type="tel"
-              description="10 dígitos"
-              endContent={form.celular && !errors.celular ? <FieldOk ok /> : null}
-            />
-            <Input
-              {...inp("correo", "Correo electrónico", false)}
-              value={form.correo ?? ""}
-              type="email"
-              endContent={form.correo && !errors.correo ? <FieldOk ok /> : null}
-            />
+            <Input {...inp("celular", "Celular")} value={form.celular ?? ""} maxLength={10} type="tel"
+              description="10 dígitos" endContent={form.celular && !errors.celular ? <FieldOk ok /> : null} />
+            <Input {...inp("correo", "Correo electrónico")} value={form.correo ?? ""} type="email"
+              endContent={form.correo && !errors.correo ? <FieldOk ok /> : null} />
           </div>
 
           {/* Toggle Afiliado */}
@@ -487,21 +511,14 @@ export default function ParticipanteModal({
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-700">Participante Afiliado</p>
-                <p className="text-[11px] text-slate-500">
-                  {form.esAfiliado ? "Requerirá seleccionar empresa" : "Actívalo si aplica"}
-                </p>
+                <p className="text-[11px] text-slate-500">{form.esAfiliado ? "Requerirá seleccionar empresa" : "Actívalo si aplica"}</p>
               </div>
             </div>
-            <Switch
-              isSelected={form.esAfiliado}
-              onValueChange={val => handleChange("esAfiliado", val)}
-              size="sm"
-              color="primary"
-            />
+            <Switch isSelected={form.esAfiliado} onValueChange={val => handleChange("esAfiliado", val)} size="sm" color="primary" />
           </div>
         </div>
 
-        {/* 2 · DIRECCIÓN */}
+        {/* ══ 2. DIRECCIÓN ══ */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <Ic.MapPin /> Dirección <span className="text-[10px] font-normal text-slate-400">(opcional)</span>
@@ -509,155 +526,217 @@ export default function ParticipanteModal({
           <OptionalBanner text="Todos los campos de dirección son opcionales." />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <Input
-                {...inp("calle", "Calle", false)}
-                value={form.calle ?? ""}
-                endContent={form.calle && !errors.calle ? <FieldOk ok /> : null}
-              />
+              <Input {...inp("calle", "Calle")} value={form.calle ?? ""}
+                endContent={form.calle && !errors.calle ? <FieldOk ok /> : null} />
             </div>
-            <Input
-              {...inp("colonia", "Colonia", false)}
-              value={form.colonia ?? ""}
-              endContent={form.colonia && !errors.colonia ? <FieldOk ok /> : null}
-            />
-            <Input
-              {...inp("cp", "Código Postal", false)}
-              value={form.cp ?? ""}
-              maxLength={5}
-              description="5 dígitos"
-              endContent={form.cp && !errors.cp ? <FieldOk ok /> : null}
-            />
+            <Input {...inp("colonia", "Colonia")} value={form.colonia ?? ""}
+              endContent={form.colonia && !errors.colonia ? <FieldOk ok /> : null} />
+            <Input {...inp("cp", "Código Postal")} value={form.cp ?? ""} maxLength={5} description="5 dígitos"
+              endContent={form.cp && !errors.cp ? <FieldOk ok /> : null} />
           </div>
         </div>
 
-        {/* 3 · DATOS FISCALES */}
+        {/* ══ 3. DATOS FISCALES ══ */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <Ic.Receipt /> Datos fiscales <span className="text-[10px] font-normal text-slate-400">(opcional)</span>
           </h3>
           <OptionalBanner text="CURP y RFC opcionales. Se validará el formato si los proporcionas." />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              {...inp("curp", "CURP", false)}
-              value={form.curp ?? ""}
-              description="18 caracteres"
-              maxLength={18}
+            <Input {...inp("curp", "CURP")} value={form.curp ?? ""} description="18 caracteres" maxLength={18}
               onChange={e => handleChange("curp", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-              endContent={form.curp && !errors.curp ? <FieldOk ok /> : null}
-            />
-            <Input
-              {...inp("rfc", "RFC", false)}
-              value={form.rfc ?? ""}
-              description="12-13 caracteres"
-              maxLength={13}
+              endContent={form.curp && !errors.curp ? <FieldOk ok /> : null} />
+            <Input {...inp("rfc", "RFC")} value={form.rfc ?? ""} description="12-13 caracteres" maxLength={13}
               onChange={e => handleChange("rfc", e.target.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g, ""))}
-              endContent={form.rfc && !errors.rfc ? <FieldOk ok /> : null}
-            />
+              endContent={form.rfc && !errors.rfc ? <FieldOk ok /> : null} />
           </div>
         </div>
 
-        {/* 4 · EMPRESA */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Building /> Empresa
-            {form.esAfiliado && <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Requerido</span>}
-          </h3>
-          
-          {form.esAfiliado ? (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
-              <span className="text-amber-500"><Ic.Warn /></span>
-              <p className="text-[11px] text-amber-700 font-medium">
-                El participante es afiliado. Debes seleccionar una empresa.
-              </p>
+        {/* ══ 4. EMPRESA ══ */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Ic.Building />
+            <h3 className="text-sm font-semibold text-slate-700">Empresa</h3>
+            {form.esAfiliado
+              ? <Chip size="sm" variant="flat" color="warning" className="ml-2">Requerido para afiliados</Chip>
+              : <Chip size="sm" variant="flat" color="default" className="ml-2">Opcional</Chip>
+            }
+          </div>
+          <Divider />
+
+          {form.esAfiliado && (
+            <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-3">
+              <ExclamationTriangleIcon className="w-4 h-4 text-warning-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-warning-700 font-medium">El participante es afiliado — debes asociarle una empresa.</p>
             </div>
-          ) : (
-            <OptionalBanner text="Asocia a una empresa si aplica." />
           )}
 
-          <Autocomplete
-            label={<RequiredLabel label="Buscar empresa" required={form.esAfiliado} /> as any}
-            size="sm"
-            variant="bordered"
-            radius="lg"
-            isInvalid={!!(touched.empresaId && errors.empresaId)}
-            errorMessage={touched.empresaId ? errors.empresaId ?? undefined : undefined}
-            onOpenChange={open => { if (open) handleOpenEmpresas(); }}
-            onInputChange={buscarEmpresasDebounced}
-            onSelectionChange={key => {
-              handleChange("empresaId", key ? Number(key) : null);
-              setTouched(p => ({ ...p, empresaId: true }));
-            }}
-            isLoading={loadingEmpresas}
-            placeholder={loadingEmpresas ? "Cargando..." : "Escriba o seleccione"}
-            classNames={acCN}
-            inputProps={acInp}
-            listboxProps={{
-              emptyContent: loadingEmpresas
-                ? <div className="flex justify-center py-5"><Spinner size="sm" color="primary" /></div>
-                : <p className="text-xs text-slate-400 text-center py-4">Sin resultados</p>,
-            }}
-          >
-            {empresas.map(emp => (
-              <AutocompleteItem key={emp.id} textValue={emp.nombre}>
-                <div className="flex items-center gap-2.5 py-1">
-                  <Avatar
-                    name={emp.nombre.charAt(0)}
-                    size="sm"
-                    className="w-7 h-7 text-tiny bg-indigo-100 text-indigo-600 font-bold"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700">{emp.nombre}</p>
-                    {emp.rfc && <p className="text-[11px] text-slate-400">{emp.rfc}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <ModeCard active={empresaMode === "buscar"} color="danger"
+              icon={<MagnifyingGlassIcon className="w-6 h-6" />}
+              label="Buscar empresa" description="Selecciona de la base"
+              onPress={() => handleEmpresaMode("buscar")} />
+            <ModeCard active={empresaMode === "despues"} color="warning"
+              icon={<ClockIcon className="w-6 h-6" />}
+              label="Asignar después" description="Pendiente"
+              onPress={() => handleEmpresaMode("despues")} />
+          </div>
+
+          {empresaMode === "buscar" && (
+            <div className="mt-3">
+              {empresaSeleccionada && form.empresaId ? (
+                <div className="flex items-center gap-3 rounded-xl bg-success-50 border border-success-200 p-4">
+                  <CheckCircleIcon className="w-5 h-5 text-success-600 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-success-700 font-semibold">{empresaSeleccionada.nombre}</p>
+                    {empresaSeleccionada.rfc && <p className="text-xs text-success-600 mt-0.5">RFC: {empresaSeleccionada.rfc}</p>}
                   </div>
+                  <Button size="sm" variant="light" color="success" onPress={() => {
+                    setEmpresaSeleccionada(null); handleChange("empresaId", null);
+                    setEmpresaSearch(""); setEmpresas([]);
+                  }}>Cambiar</Button>
                 </div>
-              </AutocompleteItem>
-            ))}
-          </Autocomplete>
+              ) : (
+                <Autocomplete
+                  label={<RequiredLabel label="Buscar empresa" required={form.esAfiliado} /> as any}
+                  size="sm" variant="bordered" radius="lg" inputValue={empresaSearch}
+                  isInvalid={!!(touched.empresaId && errors.empresaId)}
+                  errorMessage={touched.empresaId ? errors.empresaId ?? undefined : undefined}
+                  onInputChange={buscarEmpresasDebounced}
+                  onSelectionChange={key => {
+                    if (!key) { handleChange("empresaId", null); setEmpresaSeleccionada(null); return; }
+                    const found = empresas.find(e => String(e.id) === String(key));
+                    handleChange("empresaId", Number(key));
+                    setEmpresaSeleccionada(found ?? null);
+                    setTouched(p => ({ ...p, empresaId: true }));
+                  }}
+                  isLoading={loadingEmpresas} placeholder="Escribe el nombre de la empresa..."
+                  classNames={acCN} inputProps={acInp}
+                  listboxProps={{
+                    emptyContent: loadingEmpresas
+                      ? <div className="flex justify-center py-5"><Spinner size="sm" color="primary" /></div>
+                      : <p className="text-xs text-slate-400 text-center py-4">Sin resultados — escribe para buscar</p>,
+                  }}
+                >
+                  {empresas.map(emp => (
+                    <AutocompleteItem key={emp.id} textValue={emp.nombre}>
+                      <div className="flex items-center gap-2.5 py-1">
+                        <Avatar name={emp.nombre.charAt(0)} size="sm" className="w-7 h-7 text-tiny bg-indigo-100 text-indigo-600 font-bold" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">{emp.nombre}</p>
+                          {emp.rfc && <p className="text-[11px] text-slate-400">{emp.rfc}</p>}
+                        </div>
+                      </div>
+                    </AutocompleteItem>
+                  ))}
+                </Autocomplete>
+              )}
+            </div>
+          )}
+
+          {empresaMode === "despues" && (
+            <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-warning-700">Empresa pendiente</p>
+                <p className="text-xs text-warning-600 mt-1">El participante se guardará sin empresa. Recuerda asignarla después si es afiliado.</p>
+              </div>
+            </div>
+          )}
+
+          {!empresaMode && (
+            <p className="text-sm text-default-400 text-center py-3 italic">Selecciona una opción para la empresa</p>
+          )}
         </div>
 
-        {/* 5 · CURSO (opcional) */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Ic.Book /> Curso <span className="text-[10px] font-normal text-slate-400">(opcional)</span>
-          </h3>
-          <OptionalBanner text="Puedes inscribirlo a un curso ahora o hacerlo después." />
-          
-          <Autocomplete
-            label="Buscar curso"
-            size="sm"
-            variant="bordered"
-            radius="lg"
-            onOpenChange={open => { if (open) handleOpenCursos(); }}
-            onInputChange={buscarCursosDebounced}
-            onSelectionChange={key => handleChange("cursoId", key ? Number(key) : null)}
-            isLoading={loadingCursos}
-            placeholder={loadingCursos ? "Cargando..." : "Escriba o seleccione"}
-            classNames={acCN}
-            inputProps={acInp}
-            listboxProps={{
-              emptyContent: loadingCursos
-                ? <div className="flex justify-center py-5"><Spinner size="sm" color="primary" /></div>
-                : <p className="text-xs text-slate-400 text-center py-4">Sin resultados</p>,
-            }}
-          >
-            {cursos.map(curso => (
-              <AutocompleteItem key={curso.id} textValue={curso.nombre}>
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">{curso.nombre}</p>
-                  {curso.instructor && (
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {typeof curso.instructor === "object"
-                        ? `${curso.instructor.nombre ?? ""} ${curso.instructor.apellidoPaterno ?? ""}`.trim()
-                        : curso.instructor}
-                    </p>
-                  )}
+        {/* ══ 5. CURSO ══ */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Ic.Book />
+            <h3 className="text-sm font-semibold text-slate-700">Curso</h3>
+            <Chip size="sm" variant="flat" color="default" className="ml-2">Opcional</Chip>
+          </div>
+          <Divider />
+
+          <div className="grid grid-cols-2 gap-3">
+            <ModeCard active={cursoMode === "buscar"} color="danger"
+              icon={<MagnifyingGlassIcon className="w-6 h-6" />}
+              label="Buscar curso" description="Selecciona de la base"
+              onPress={() => handleCursoMode("buscar")} />
+            <ModeCard active={cursoMode === "despues"} color="warning"
+              icon={<ClockIcon className="w-6 h-6" />}
+              label="Inscribir después" description="Pendiente"
+              onPress={() => handleCursoMode("despues")} />
+          </div>
+
+          {cursoMode === "buscar" && (
+            <div className="mt-3">
+              {cursoSeleccionado && form.cursoId ? (
+                <div className="flex items-center gap-3 rounded-xl bg-success-50 border border-success-200 p-4">
+                  <CheckCircleIcon className="w-5 h-5 text-success-600 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-success-700 font-semibold">{cursoSeleccionado.nombre}</p>
+                    {cursoSeleccionado.instructor && (
+                      <p className="text-xs text-success-600 mt-0.5">
+                        {cursoSeleccionado.instructor?.nombre} {cursoSeleccionado.instructor?.apellidoPaterno}
+                      </p>
+                    )}
+                  </div>
+                  <Button size="sm" variant="light" color="success" onPress={() => {
+                    setCursoSeleccionado(null); handleChange("cursoId", null);
+                    setCursoSearch(""); setCursos([]);
+                  }}>Cambiar</Button>
                 </div>
-              </AutocompleteItem>
-            ))}
-          </Autocomplete>
+              ) : (
+                <Autocomplete
+                  label="Buscar curso" size="sm" variant="bordered" radius="lg" inputValue={cursoSearch}
+                  onInputChange={buscarCursosDebounced}
+                  onSelectionChange={key => {
+                    if (!key) { handleChange("cursoId", null); setCursoSeleccionado(null); return; }
+                    const found = cursos.find(c => String(c.id) === String(key));
+                    handleChange("cursoId", Number(key));
+                    setCursoSeleccionado(found ?? null);
+                  }}
+                  isLoading={loadingCursos} placeholder="Escribe el nombre del curso..."
+                  classNames={acCN} inputProps={acInp}
+                  listboxProps={{
+                    emptyContent: loadingCursos
+                      ? <div className="flex justify-center py-5"><Spinner size="sm" color="primary" /></div>
+                      : <p className="text-xs text-slate-400 text-center py-4">Sin resultados — escribe para buscar</p>,
+                  }}
+                >
+                  {cursos.map(curso => (
+                    <AutocompleteItem key={curso.id} textValue={curso.nombre}>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">{curso.nombre}</p>
+                        {curso.instructor && (
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {curso.instructor?.nombre} {curso.instructor?.apellidoPaterno}
+                          </p>
+                        )}
+                      </div>
+                    </AutocompleteItem>
+                  ))}
+                </Autocomplete>
+              )}
+            </div>
+          )}
+
+          {cursoMode === "despues" && (
+            <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-warning-700">Inscripción pendiente</p>
+                <p className="text-xs text-warning-600 mt-1">El participante se guardará sin curso. Puedes inscribirlo después.</p>
+              </div>
+            </div>
+          )}
+
+          {!cursoMode && (
+            <p className="text-sm text-default-400 text-center py-3 italic">Selecciona una opción para el curso</p>
+          )}
         </div>
 
-        <div className="h-4" /> {/* Espacio extra al final */}
       </div>
     </ModalForm>
   );
