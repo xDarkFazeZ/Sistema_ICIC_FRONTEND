@@ -241,7 +241,7 @@ export default function CursoModal({
         precioPublico: Number(form.precioPublico),
         precioEstudiante: Number(form.precioEstudiante),
         duracion: form.duracion ? Number(form.duracion) : undefined,
-        instructorId: instructorMode === "despues" ? undefined : form.instructorId,
+        instructorId: instructorMode === "despues" ? null : form.instructorId,
       });
 
       sileo.success({
