@@ -12,6 +12,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@heroui/react": "^2.8.8",
+    "@internationalized/date": "^3.11.0",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.5",
     "lucide-react": "^0.563.0",
