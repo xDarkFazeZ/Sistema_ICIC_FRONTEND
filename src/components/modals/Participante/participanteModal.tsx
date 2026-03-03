@@ -13,12 +13,13 @@ import {
   Divider,
 } from "@heroui/react";
 import { DatePicker } from "@heroui/react";
-import { CalendarDate, parseDate} from "@internationalized/date";
+import { CalendarDate, parseDate } from "@internationalized/date";
 import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 import InscripcionModal from "../inscripcionModal";
+import EmpresaModal from "../../modals/empresaModal";
 
-import { buscarEmpresas, crearEmpresa} from "../../../services/empresaService";
+import { buscarEmpresas, obtenerEmpresa } from "../../../services/empresaService";
 import { listarCursos, obtenerCursoPorId } from "../../../services/cursoService";
 import { crearParticipante, actualizarParticipante } from "../../../services/participanteService";
 import {
@@ -28,11 +29,9 @@ import {
   PlusCircleIcon,
   CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
-import {
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/solid";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 
-// ── Tokens ───────────────────────────────────────────────────────────────────
+// ── Tokens ────────────────────────────────────────────────────────────────────
 const C = { accentSolid: "#4f46e5" };
 
 // ── Iconos SVG inline ─────────────────────────────────────────────────────────
@@ -90,7 +89,7 @@ const Ic = {
   ),
 };
 
-// ── Tipos de modo ─────────────────────────────────────────────────────────────
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 type EmpresaMode = "buscar" | "crear" | "despues" | null;
 type CursoMode = "buscar" | "despues" | null;
 
@@ -122,17 +121,6 @@ const validators: Record<string, (v: any, form?: Record<string, any>) => string 
     (v, form) => form?.esAfiliado && form?.empresaMode === "buscar" && !v
       ? "Requerido cuando el participante es afiliado"
       : null,
-};
-
-// ── Validadores empresa nueva ─────────────────────────────────────────────────
-const empresaValidators = {
-  nombre: (v: string) =>
-    !v || v.trim().length < 2 ? "Requerido · Mínimo 2 caracteres" : v.length > 100 ? "Máximo 100 caracteres" : null,
-  rfc: (v: string) =>
-    !v ? "RFC es requerido" :
-      !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v) ? "RFC inválido · 12-13 caracteres" : null,
-  direccion: (v: string) =>
-    !v || v.trim().length < 5 ? "Requerido · Mínimo 5 caracteres" : v.length > 200 ? "Máximo 200 caracteres" : null,
 };
 
 const REQUIRED_FIELDS = ["nombre", "apellidoPaterno", "fechaNacimiento"];
@@ -218,9 +206,10 @@ export default function ParticipanteModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Estados para modales anidados
+  // Modales anidados
   const [inscripcionModalOpen, setInscripcionModalOpen] = useState(false);
   const [inscripcionData, setInscripcionData] = useState<any>(null);
+  const [empresaModalOpen, setEmpresaModalOpen] = useState(false);
 
   // Empresa
   const [empresaMode, setEmpresaMode] = useState<EmpresaMode>(null);
@@ -229,12 +218,7 @@ export default function ParticipanteModal({
   const [empresaSearch, setEmpresaSearch] = useState("");
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<any | null>(null);
   const [empresaCompleta, setEmpresaCompleta] = useState<any | null>(null);
-
-  // ── Estado: nueva empresa ─────────────────────────────────────────────────
-  const [nuevaEmpresa, setNuevaEmpresa] = useState({ nombre: "", rfc: "", direccion: "N/A" });
-  const [nuevaEmpresaErrors, setNuevaEmpresaErrors] = useState<Record<string, string | null>>({});
-  const [nuevaEmpresaTouched, setNuevaEmpresaTouched] = useState<Record<string, boolean>>({});
-  const [creandoEmpresa, setCreandoEmpresa] = useState(false);
+  // Empresa creada desde el modal (modo "crear")
   const [empresaCreada, setEmpresaCreada] = useState<any | null>(null);
 
   // Curso
@@ -246,28 +230,27 @@ export default function ParticipanteModal({
 
   const timeouts = useRef<Record<string, any>>({});
 
-  // ── Reset y carga de datos ─────────────────────────────────────────────────
+  // ── Reset y carga de datos ────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
       setForm({ esAfiliado: false });
       setErrors({}); setTouched({}); setSubmitError(null);
-      setEmpresaMode(null); setEmpresas([]); setEmpresaSearch(""); setEmpresaSeleccionada(null); setEmpresaCompleta(null);
-      setNuevaEmpresa({ nombre: "", rfc: "", direccion: "N/A" });
-      setNuevaEmpresaErrors({}); setNuevaEmpresaTouched({}); setEmpresaCreada(null);
+      setEmpresaMode(null); setEmpresas([]); setEmpresaSearch("");
+      setEmpresaSeleccionada(null); setEmpresaCompleta(null); setEmpresaCreada(null);
       setCursoMode(null); setCursos([]); setCursoSearch(""); setCursoSeleccionado(null);
       setInscripcionModalOpen(false); setInscripcionData(null);
-    } else if (participanteToEdit) {
-      // IMPORTANTE: Formatear la fecha correctamente
-      const fechaFormateada = participanteToEdit.fechaNacimiento
-        ? participanteToEdit.fechaNacimiento.split('T')[0]
-        : null;
+      setEmpresaModalOpen(false);
+      return;
+    }
 
+    if (participanteToEdit) {
       setForm({
         ...participanteToEdit,
-        fechaNacimiento: fechaFormateada,
+        fechaNacimiento: participanteToEdit.fechaNacimiento
+          ? participanteToEdit.fechaNacimiento.split("T")[0]
+          : null,
       });
 
-      // Si tiene empresa, cargar datos completos
       if (participanteToEdit.empresaId) {
         setEmpresaMode("buscar");
         obtenerEmpresa(participanteToEdit.empresaId).then(emp => {
@@ -276,7 +259,6 @@ export default function ParticipanteModal({
         }).catch(console.error);
       }
 
-      // Si tiene curso, cargar datos
       if (participanteToEdit.cursoId) {
         setCursoMode("buscar");
         obtenerCursoPorId(participanteToEdit.cursoId).then(curso => {
@@ -285,7 +267,10 @@ export default function ParticipanteModal({
           setCursos([curso]);
         }).catch(console.error);
       }
-    } else if (cursoIdParaAsignar) {
+      return;
+    }
+
+    if (cursoIdParaAsignar) {
       setCursoMode("buscar");
       obtenerCursoPorId(cursoIdParaAsignar).then(curso => {
         setCursoSeleccionado(curso);
@@ -296,12 +281,10 @@ export default function ParticipanteModal({
     }
   }, [isOpen, participanteToEdit, cursoIdParaAsignar]);
 
-  // Cargar datos completos de empresa cuando se selecciona una
+  // Cargar datos completos de empresa al seleccionar por ID
   useEffect(() => {
     if (form.empresaId && !empresaCompleta) {
-      obtenerEmpresa(form.empresaId).then(emp => {
-        setEmpresaCompleta(emp);
-      }).catch(console.error);
+      obtenerEmpresa(form.empresaId).then(setEmpresaCompleta).catch(console.error);
     }
   }, [form.empresaId, empresaCompleta]);
 
@@ -334,82 +317,25 @@ export default function ParticipanteModal({
   const handleEmpresaMode = (mode: EmpresaMode) => {
     if (mode === empresaMode) return;
     setEmpresaMode(mode);
-    setEmpresas([]); setEmpresaSearch(""); setEmpresaSeleccionada(null); setEmpresaCompleta(null);
-    setNuevaEmpresa({ nombre: "", rfc: "", direccion: "N/A" });
-    setNuevaEmpresaErrors({}); setNuevaEmpresaTouched({}); setEmpresaCreada(null);
+    setEmpresas([]); setEmpresaSearch("");
+    setEmpresaSeleccionada(null); setEmpresaCompleta(null); setEmpresaCreada(null);
     handleChange("empresaId", null);
   };
 
+  // ── Callback: empresa creada desde EmpresaModal ───────────────────────────
+  const handleEmpresaCreada = (empresa: any) => {
+    setEmpresaCreada(empresa);
+    setEmpresaCompleta(empresa);
+    handleChange("empresaId", empresa.id);
+    setEmpresaModalOpen(false);
+  };
+
+  // ── Cambio de modo curso ──────────────────────────────────────────────────
   const handleCursoMode = (mode: CursoMode) => {
     if (mode === cursoMode) return;
     setCursoMode(mode);
     setCursos([]); setCursoSearch(""); setCursoSeleccionado(null);
     handleChange("cursoId", null);
-  };
-
-  // ── Helpers nueva empresa ─────────────────────────────────────────────────
-  const handleNuevaEmpresaChange = (field: string, value: string) => {
-    const v = value.trim() === "" ? "" : value;
-    setNuevaEmpresa(prev => ({ ...prev, [field]: v }));
-    if (nuevaEmpresaTouched[field]) {
-      setNuevaEmpresaErrors(prev => ({
-        ...prev,
-        [field]: empresaValidators[field as keyof typeof empresaValidators]?.(v) ?? null,
-      }));
-    }
-  };
-
-  const handleNuevaEmpresaBlur = (field: string) => {
-    setNuevaEmpresaTouched(prev => ({ ...prev, [field]: true }));
-    setNuevaEmpresaErrors(prev => ({
-      ...prev,
-      [field]: empresaValidators[field as keyof typeof empresaValidators]?.(
-        nuevaEmpresa[field as keyof typeof nuevaEmpresa]
-      ) ?? null,
-    }));
-  };
-
-  const validateNuevaEmpresa = () => {
-    const e: Record<string, string | null> = {};
-    for (const [field, validate] of Object.entries(empresaValidators)) {
-      const err = validate(nuevaEmpresa[field as keyof typeof nuevaEmpresa]);
-      if (err) e[field] = err;
-    }
-    setNuevaEmpresaErrors(e);
-    setNuevaEmpresaTouched({ nombre: true, rfc: true, direccion: true });
-    return Object.keys(e).length === 0;
-  };
-
-  // ── Crear empresa ─────────────────────────────────────────────────────────
-  const handleCrearEmpresa = async () => {
-    if (!validateNuevaEmpresa()) {
-      sileo.warning({ title: "Datos incompletos", description: "Completa los campos requeridos de la empresa." });
-      return;
-    }
-    setCreandoEmpresa(true);
-    try {
-      const response = await crearEmpresa({
-        nombre: nuevaEmpresa.nombre.trim(),
-        rfc: nuevaEmpresa.rfc.trim().toUpperCase(),
-        direccion: nuevaEmpresa.direccion.trim(),
-      });
-
-      const empresa = response?.data ?? response;
-
-      setEmpresaCreada(empresa);
-      setEmpresaCompleta(empresa);
-      handleChange("empresaId", empresa.id);
-
-      sileo.success({
-        title: "¡Empresa creada!",
-        description: `"${empresa.nombre}" fue registrada y asignada correctamente.`,
-      });
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? "Error al crear la empresa";
-      sileo.error({ title: "Error al crear empresa", description: msg });
-    } finally {
-      setCreandoEmpresa(false);
-    }
   };
 
   // ── Form helpers ──────────────────────────────────────────────────────────
@@ -440,7 +366,7 @@ export default function ParticipanteModal({
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    // Validar que si modo "crear" la empresa ya fue creada
+    // Si eligió "crear empresa" pero aún no la creó, bloqueamos
     if (empresaMode === "crear" && !empresaCreada) {
       sileo.warning({
         title: "Empresa sin crear",
@@ -457,50 +383,36 @@ export default function ParticipanteModal({
     setSubmitError(null);
     setIsSubmitting(true);
 
-    // Construir payload de manera más controlada
-    const payload: Record<string, any> = { 
-      esAfiliado: form.esAfiliado ?? false 
-    };
+    const payload: Record<string, any> = { esAfiliado: form.esAfiliado ?? false };
 
-    // Lista de campos válidos del participante
     const camposParticipante = [
-      'nombre', 'apellidoPaterno', 'apellidoMaterno', 'fechaNacimiento',
-      'celular', 'correo', 'curp', 'rfc', 'calle', 'colonia', 'cp'
+      "nombre", "apellidoPaterno", "apellidoMaterno", "fechaNacimiento",
+      "celular", "correo", "curp", "rfc", "calle", "colonia", "cp",
     ];
 
-    // Agregar solo campos que tienen valor
     for (const campo of camposParticipante) {
-      if (form[campo] !== null && form[campo] !== undefined && form[campo] !== '') {
+      if (form[campo] !== null && form[campo] !== undefined && form[campo] !== "") {
         payload[campo] = form[campo];
       }
     }
 
-    // Manejar empresa
-    if (empresaMode === "buscar" && form.empresaId) {
+    // Empresa: puede venir de modo "buscar" o de modo "crear" (ya seteamos empresaId en ambos casos)
+    if (form.empresaId) {
       payload.empresaId = Number(form.empresaId);
     }
 
     try {
       let response;
-      
+
       if (participanteToEdit) {
-        // MODO EDICIÓN - usar PUT
         response = await actualizarParticipante(participanteToEdit.id, payload);
-        sileo.success({ 
-          title: "¡Actualizado!", 
-          description: "El participante fue actualizado correctamente." 
-        });
+        sileo.success({ title: "¡Actualizado!", description: "El participante fue actualizado correctamente." });
         onSuccess?.(response);
         onClose();
       } else {
-        // MODO CREACIÓN - usar POST
         response = await crearParticipante(payload);
-        sileo.success({ 
-          title: "¡Registro exitoso!", 
-          description: "El participante fue guardado correctamente." 
-        });
-        
-        // Si hay curso seleccionado, abrir modal de inscripción
+        sileo.success({ title: "¡Registro exitoso!", description: "El participante fue guardado correctamente." });
+
         if (cursoMode === "buscar" && cursoSeleccionado) {
           setInscripcionData({
             participante: response.data || response,
@@ -514,7 +426,6 @@ export default function ParticipanteModal({
       }
     } catch (err: any) {
       const data = err?.response?.data;
-      // Manejo especial para errores de campos únicos
       if (err?.response?.status === 409) {
         const msg = data?.message ?? "Ya existe otro participante con ese correo, CURP o RFC";
         setSubmitError(msg);
@@ -557,18 +468,6 @@ export default function ParticipanteModal({
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(field, e.target.value),
     classNames: inputCN,
     ...extra,
-  });
-
-  // Mismos estilos para campos de nueva empresa
-  const inpEmpresa = (field: keyof typeof nuevaEmpresa, label: string, required = false) => ({
-    label: <RequiredLabel label={label} required={required} /> as any,
-    size: "sm" as const, variant: "bordered" as const, radius: "lg" as const,
-    value: nuevaEmpresa[field],
-    isInvalid: !!(nuevaEmpresaTouched[field] && nuevaEmpresaErrors[field]),
-    errorMessage: nuevaEmpresaTouched[field] ? nuevaEmpresaErrors[field] ?? undefined : undefined,
-    onBlur: () => handleNuevaEmpresaBlur(field),
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleNuevaEmpresaChange(field, e.target.value),
-    classNames: inputCN,
   });
 
   const acCN = {
@@ -658,9 +557,7 @@ export default function ParticipanteModal({
 
               <DatePicker
                 label={<RequiredLabel label="Fecha de Nacimiento" required />}
-                size="sm"
-                variant="bordered"
-                radius="lg"
+                size="sm" variant="bordered" radius="lg"
                 value={form.fechaNacimiento ? parseDate(form.fechaNacimiento) : null}
                 onChange={(date: CalendarDate | null) => {
                   handleChange("fechaNacimiento", date ? date.toString() : null);
@@ -670,17 +567,9 @@ export default function ParticipanteModal({
                 errorMessage={touched.fechaNacimiento ? errors.fechaNacimiento : undefined}
                 showMonthAndYearPickers
                 granularity="day"
-                dateInput={{
-                  locale: "es-MX",
-                  inputProps: {
-                    placeholder: "dd/mm/aaaa",
-                  },
-                }}
-                classNames={{
-                  ...inputCN,
-                  selectorButton: "text-danger",
-                }}
-                maxValue={parseDate(new Date().toISOString().split('T')[0])}
+                dateInput={{ locale: "es-MX", inputProps: { placeholder: "dd/mm/aaaa" } }}
+                classNames={{ ...inputCN, selectorButton: "text-danger" }}
+                maxValue={parseDate(new Date().toISOString().split("T")[0])}
               />
 
               <Input {...inp("celular", "Celular")} value={form.celular ?? ""} maxLength={10} type="tel"
@@ -757,7 +646,7 @@ export default function ParticipanteModal({
               </div>
             )}
 
-            {/* Mostrar saldos si hay empresa seleccionada */}
+            {/* Saldos de empresa seleccionada/creada */}
             {empresaCompleta && (
               <Card className="bg-primary-50/30 border border-primary-200">
                 <CardBody className="flex flex-row items-center gap-4">
@@ -775,7 +664,7 @@ export default function ParticipanteModal({
               </Card>
             )}
 
-            {/* 3 opciones: buscar / crear / después */}
+            {/* Opciones de modo */}
             <div className="grid grid-cols-3 gap-3">
               <ModeCard active={empresaMode === "buscar"} color="danger"
                 icon={<MagnifyingGlassIcon className="w-6 h-6" />}
@@ -820,12 +709,12 @@ export default function ParticipanteModal({
                       if (found) {
                         handleChange("empresaId", Number(key));
                         setEmpresaSeleccionada(found);
-                        // Cargar datos completos
                         obtenerEmpresa(Number(key)).then(setEmpresaCompleta).catch(console.error);
                       }
                       setTouched(p => ({ ...p, empresaId: true }));
                     }}
-                    isLoading={loadingEmpresas} placeholder="Escribe el nombre de la empresa..."
+                    isLoading={loadingEmpresas}
+                    placeholder="Escribe el nombre de la empresa..."
                     classNames={acCN} inputProps={acInp}
                     listboxProps={{
                       emptyContent: loadingEmpresas
@@ -849,10 +738,11 @@ export default function ParticipanteModal({
               </div>
             )}
 
-            {/* ── MODO: Crear nueva empresa ── */}
+            {/* ── MODO: Crear empresa — abre EmpresaModal ── */}
             {empresaMode === "crear" && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3">
                 {empresaCreada ? (
+                  // Ya fue creada: mostrar chip de confirmación
                   <div className="flex items-center gap-3 rounded-xl bg-success-50 border border-success-200 p-4">
                     <CheckCircleIcon className="w-5 h-5 text-success-600 shrink-0" />
                     <div className="flex-1">
@@ -867,8 +757,6 @@ export default function ParticipanteModal({
                       onPress={() => {
                         setEmpresaCreada(null);
                         setEmpresaCompleta(null);
-                        setNuevaEmpresa({ nombre: "", rfc: "", direccion: "N/A" });
-                        setNuevaEmpresaErrors({}); setNuevaEmpresaTouched({});
                         handleChange("empresaId", null);
                       }}
                     >
@@ -876,57 +764,28 @@ export default function ParticipanteModal({
                     </Button>
                   </div>
                 ) : (
+                  // No creada aún: botón para abrir el modal
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
-                    <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                    <p className="text-xs text-emerald-700 font-medium flex items-center gap-1.5">
                       <PlusCircleIcon className="w-4 h-4" />
-                      Datos de la nueva empresa
+                      Se abrirá un formulario para registrar la nueva empresa
                     </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Input
-                        {...inpEmpresa("nombre", "Nombre de la empresa", true)}
-                        endContent={
-                          nuevaEmpresa.nombre && !nuevaEmpresaErrors.nombre
-                            ? <FieldOk ok /> : null
-                        }
-                      />
-                      <Input
-                        {...inpEmpresa("rfc", "RFC de la empresa", true)}
-                        maxLength={13}
-                        description="12-13 caracteres"
-                        onChange={e =>
-                          handleNuevaEmpresaChange("rfc", e.target.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g, ""))
-                        }
-                        endContent={
-                          nuevaEmpresa.rfc && !nuevaEmpresaErrors.rfc
-                            ? <FieldOk ok /> : null
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                      <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-                      <p className="text-[11px] text-amber-700">
-                        Si la empresa ya existe con ese RFC, el servidor retornará un error. Usa <strong>Buscar empresa</strong> en ese caso.
-                      </p>
-                    </div>
-
                     <Button
                       color="success"
                       variant="flat"
                       size="sm"
-                      isLoading={creandoEmpresa}
-                      startContent={!creandoEmpresa ? <PlusCircleIcon className="w-4 h-4" /> : null}
-                      onPress={handleCrearEmpresa}
+                      startContent={<PlusCircleIcon className="w-4 h-4" />}
+                      onPress={() => setEmpresaModalOpen(true)}
                       className="w-full font-semibold"
                     >
-                      {creandoEmpresa ? "Creando empresa..." : "Crear empresa y asignar"}
+                      Crear nueva empresa
                     </Button>
                   </div>
                 )}
               </div>
             )}
 
+            {/* ── MODO: Después ── */}
             {empresaMode === "despues" && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
@@ -992,7 +851,8 @@ export default function ParticipanteModal({
                         setCursoSeleccionado(found);
                       }
                     }}
-                    isLoading={loadingCursos} placeholder="Escribe el nombre del curso..."
+                    isLoading={loadingCursos}
+                    placeholder="Escribe el nombre del curso..."
                     classNames={acCN} inputProps={acInp}
                     listboxProps={{
                       emptyContent: loadingCursos
@@ -1035,16 +895,23 @@ export default function ParticipanteModal({
         </div>
       </ModalForm>
 
-      {/* Modal de inscripción */}
+      {/* ── Modal: Crear empresa ── */}
+      <EmpresaModal
+        isOpen={empresaModalOpen}
+        onClose={() => setEmpresaModalOpen(false)}
+        onSuccess={handleEmpresaCreada}
+      />
+
+      {/* ── Modal: Inscripción ── */}
       {inscripcionData && (
         <InscripcionModal
           isOpen={inscripcionModalOpen}
           onClose={() => {
             setInscripcionModalOpen(false);
             setInscripcionData(null);
-            onClose(); // Cerrar también el modal de participante
+            onClose();
           }}
-          onSuccess={(inscripcion) => {
+          onSuccess={() => {
             sileo.success({ title: "Inscripción completada" });
             setInscripcionModalOpen(false);
             setInscripcionData(null);
