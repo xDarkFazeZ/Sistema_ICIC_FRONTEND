@@ -117,20 +117,6 @@ const handleParticipanteCreado = (nuevo: any) => {
   // Ambas opciones se definen aquí con acceso a los setters del componente
   const opcionesSiguientePaso: SiguientePasoOpcion[] = [
     {
-      label: "Asignar a un curso",
-      descripcion: "Inscribe a este participante en un curso existente",
-      icono: <IcoCurso />,
-      color: "from-red-500 to-rose-600",
-      // El participanteModal ya tiene sección de curso integrada — abrimos
-      // el modal en modo "solo asignación" reutilizando el mismo flujo
-      onClick: () => {
-        // Abrimos el modal de participante vacío para que elija el curso
-        // Si prefieres un modal específico de inscripción, cámbialo aquí
-        setParticipanteAEditar(null);
-        setModalParticipanteAbierto(true);
-      },
-    },
-    {
       label: "Registrar otro participante",
       descripcion: "Abre el formulario para dar de alta un nuevo participante",
       icono: <IcoUsuario />,
