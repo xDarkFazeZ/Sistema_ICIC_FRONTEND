@@ -13,6 +13,7 @@ import CursoModal from "../../components/modals/Cursos/cursosModal";
 import SiguientePasoModal, {
   type SiguientePasoOpcion,
 } from "../../components/common/siguientePasoModal";
+import Sidebar from "../../components/common/Sidebar";
 
 // ── Ícono SVG inline ──────────────────────────────────────────────────────────
 const IcoCurso = () => (
@@ -62,7 +63,11 @@ export default function Instructores() {
 
   // ────────────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
+
+      <Sidebar />
+
+      <main className="flex-1 p-6">
       {/* ── Encabezado de página ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -114,6 +119,7 @@ export default function Instructores() {
           setModalCursoAbierto(false);
         }}
       />
+      </main>
     </div>
   );
 }

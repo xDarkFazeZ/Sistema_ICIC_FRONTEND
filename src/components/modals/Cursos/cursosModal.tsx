@@ -11,7 +11,9 @@ import {
   Divider,
   Chip,
   Button,
+  DateRangePicker,
 } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
 import { useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 import { sileo } from "sileo";
@@ -80,6 +82,9 @@ export default function CursoModal({
   const [form, setForm] = useState<Record<string, any>>({ ...FORM_INITIAL });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // DateRangePicker value: { start: CalendarDate | null, end: CalendarDate | null }
+  const [dateRange, setDateRange] = useState<{ start: any; end: any } | null>(null);
+
   const [instructorMode, setInstructorMode] = useState<InstructorMode | null>(null);
   const [instructorSearch, setInstructorSearch] = useState("");
   const [debouncedSearch] = useDebounce(instructorSearch, 400);
@@ -92,6 +97,7 @@ export default function CursoModal({
   useEffect(() => {
     if (!isOpen) {
       setForm({ ...FORM_INITIAL });
+      setDateRange(null);
       setInstructorSearch("");
       setInstructores([]);
       setErrors({});
@@ -103,6 +109,9 @@ export default function CursoModal({
   // ── Modo edición ─────────────────────────────────────────────
   useEffect(() => {
     if (cursoToEdit && isOpen) {
+      const fi = cursoToEdit.fechaInicio?.substring(0, 10) ?? "";
+      const ff = cursoToEdit.fechaFin?.substring(0, 10) ?? "";
+
       setForm({
         nombre: cursoToEdit.nombre ?? "",
         descripcion: cursoToEdit.descripcion ?? "",
@@ -111,13 +120,20 @@ export default function CursoModal({
         precioEstudiante: String(cursoToEdit.precioEstudiante ?? ""),
         duracion: String(cursoToEdit.duracion ?? ""),
         horario: cursoToEdit.horario ?? "",
-        fechaInicio: cursoToEdit.fechaInicio?.substring(0, 10) ?? "",
-        fechaFin: cursoToEdit.fechaFin?.substring(0, 10) ?? "",
+        fechaInicio: fi,
+        fechaFin: ff,
         aula: cursoToEdit.aula ?? "",
         nivelGerencial: cursoToEdit.nivelGerencial ?? "",
         activo: cursoToEdit.activo ?? true,
         instructorId: cursoToEdit.instructorId ?? null,
       });
+
+      setDateRange(
+        fi && ff
+          ? { start: parseDate(fi), end: parseDate(ff) }
+          : null
+      );
+
       setInstructorMode("buscar");
     }
   }, [cursoToEdit, isOpen]);
@@ -160,6 +176,16 @@ export default function CursoModal({
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  // Sync DateRangePicker → form fields
+  const handleDateRangeChange = (range: { start: any; end: any } | null) => {
+    setDateRange(range);
+    const fi = range?.start ? range.start.toString() : "";
+    const ff = range?.end ? range.end.toString() : "";
+    setForm((prev) => ({ ...prev, fechaInicio: fi, fechaFin: ff }));
+    if (errors.fechaInicio || errors.fechaFin)
+      setErrors((prev) => ({ ...prev, fechaInicio: "", fechaFin: "" }));
   };
 
   const handleModeChange = (mode: InstructorMode) => {
@@ -263,6 +289,9 @@ export default function CursoModal({
     }
   };
 
+  // Error combinado para el DateRangePicker
+  const dateRangeError = errors.fechaInicio || errors.fechaFin;
+
   return (
     <>
       <ModalForm
@@ -286,7 +315,7 @@ export default function CursoModal({
               <h3 className="text-lg font-semibold text-default-800">Información básica</h3>
             </div>
             <Divider className="bg-danger/20" />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Nombre del curso"
@@ -296,15 +325,12 @@ export default function CursoModal({
                 isInvalid={!!errors.nombre}
                 errorMessage={errors.nombre}
                 className="col-span-2"
-                classNames={{
-                  input: "text-base",
-                  label: "font-medium",
-                }}
+                classNames={{ input: "text-base", label: "font-medium" }}
                 placeholder="Ej: Liderazgo transformacional"
                 startContent={<AcademicCapIcon className="w-4 h-4 text-default-400" />}
                 size="lg"
               />
-              
+
               <Textarea
                 label="Descripción"
                 value={form.descripcion}
@@ -312,9 +338,7 @@ export default function CursoModal({
                 className="col-span-2"
                 minRows={3}
                 placeholder="Describe el contenido y objetivos del curso..."
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
               />
             </div>
           </div>
@@ -326,7 +350,7 @@ export default function CursoModal({
               <h3 className="text-lg font-semibold text-default-800">Precios y duración</h3>
             </div>
             <Divider className="bg-danger/20" />
-            
+
             <div className="grid grid-cols-3 gap-4">
               <Input
                 type="number"
@@ -338,12 +362,10 @@ export default function CursoModal({
                 errorMessage={errors.precioAfiliado}
                 startContent={<span className="text-default-400 text-sm font-medium">$</span>}
                 min={0}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
               />
-              
+
               <Input
                 type="number"
                 label="Precio Público"
@@ -354,12 +376,10 @@ export default function CursoModal({
                 errorMessage={errors.precioPublico}
                 startContent={<span className="text-default-400 text-sm font-medium">$</span>}
                 min={0}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
               />
-              
+
               <Input
                 type="number"
                 label="Precio Estudiante"
@@ -370,9 +390,7 @@ export default function CursoModal({
                 errorMessage={errors.precioEstudiante}
                 startContent={<span className="text-default-400 text-sm font-medium">$</span>}
                 min={0}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
               />
 
@@ -382,9 +400,7 @@ export default function CursoModal({
                 value={form.duracion}
                 onValueChange={(v) => handleChange("duracion", v)}
                 min={1}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
                 placeholder="40"
                 endContent={<span className="text-default-400 text-sm">hrs</span>}
@@ -399,7 +415,7 @@ export default function CursoModal({
               <h3 className="text-lg font-semibold text-default-800">Horario y ubicación</h3>
             </div>
             <Divider className="bg-danger/20" />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Horario"
@@ -409,13 +425,11 @@ export default function CursoModal({
                 isRequired
                 isInvalid={!!errors.horario}
                 errorMessage={errors.horario}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
                 startContent={<ClockIcon className="w-4 h-4 text-default-400" />}
               />
-              
+
               <Input
                 label="Aula"
                 value={form.aula}
@@ -423,44 +437,26 @@ export default function CursoModal({
                 isRequired
                 isInvalid={!!errors.aula}
                 errorMessage={errors.aula}
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
                 size="lg"
                 startContent={<MapPinIcon className="w-4 h-4 text-default-400" />}
                 placeholder="Ej: Auditorio A"
               />
-              
-              <Input
-                type="date"
-                label="Fecha de inicio"
-                value={form.fechaInicio}
-                onValueChange={(v) => handleChange("fechaInicio", v)}
+
+              {/* ── DateRangePicker (reemplaza los dos inputs de fecha) ── */}
+              <DateRangePicker
+                label="Periodo del curso"
+                value={dateRange}
+                onChange={handleDateRangeChange}
                 isRequired
-                isInvalid={!!errors.fechaInicio}
-                errorMessage={errors.fechaInicio}
-                labelPlacement="outside"
-                placeholder=" "
-                classNames={{
-                  label: "font-medium",
-                }}
+                isInvalid={!!dateRangeError}
+                errorMessage={dateRangeError}
+                classNames={{ label: "font-medium" }}
                 size="lg"
-              />
-              
-              <Input
-                type="date"
-                label="Fecha de fin"
-                value={form.fechaFin}
-                onValueChange={(v) => handleChange("fechaFin", v)}
-                isRequired
-                isInvalid={!!errors.fechaFin}
-                errorMessage={errors.fechaFin}
-                labelPlacement="outside"
-                placeholder=" "
-                classNames={{
-                  label: "font-medium",
-                }}
-                size="lg"
+                className="col-span-2"
+                visibleMonths={2}
+                pageBehavior="single"
+                startContent={<CalendarIcon className="w-4 h-4 text-default-400 flex-shrink-0" />}
               />
             </div>
           </div>
@@ -477,9 +473,7 @@ export default function CursoModal({
               isRequired
               isInvalid={!!errors.nivelGerencial}
               errorMessage={errors.nivelGerencial}
-              classNames={{
-                label: "font-medium",
-              }}
+              classNames={{ label: "font-medium" }}
               size="lg"
               placeholder="Selecciona un nivel"
               startContent={<ChevronDownIcon className="w-4 h-4 text-default-400" />}
@@ -497,9 +491,7 @@ export default function CursoModal({
                 onValueChange={(v) => handleChange("activo", v)}
                 color="success"
                 size="lg"
-                classNames={{
-                  label: "font-medium",
-                }}
+                classNames={{ label: "font-medium" }}
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">{form.activo ? "Activo" : "Inactivo"}</span>
@@ -521,7 +513,7 @@ export default function CursoModal({
               </Chip>
             </div>
             <Divider className="bg-danger/20" />
-            
+
             <div className="grid grid-cols-3 gap-3">
               <Card
                 isPressable
@@ -533,25 +525,13 @@ export default function CursoModal({
                 }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${
-                    instructorMode === "buscar" ? "bg-danger/10" : "bg-default-100"
-                  }`}>
-                    <MagnifyingGlassIcon
-                      className={`w-6 h-6 ${
-                        instructorMode === "buscar" ? "text-danger" : "text-default-500"
-                      }`}
-                    />
+                  <div className={`p-2 rounded-full transition-all ${instructorMode === "buscar" ? "bg-danger/10" : "bg-default-100"}`}>
+                    <MagnifyingGlassIcon className={`w-6 h-6 ${instructorMode === "buscar" ? "text-danger" : "text-default-500"}`} />
                   </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      instructorMode === "buscar" ? "text-danger" : "text-default-600"
-                    }`}
-                  >
+                  <span className={`text-sm font-semibold ${instructorMode === "buscar" ? "text-danger" : "text-default-600"}`}>
                     Buscar existente
                   </span>
-                  <span className="text-xs text-default-400">
-                    Selecciona de la base
-                  </span>
+                  <span className="text-xs text-default-400">Selecciona de la base</span>
                 </CardBody>
               </Card>
 
@@ -565,25 +545,13 @@ export default function CursoModal({
                 }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${
-                    instructorMode === "crear" ? "bg-danger/10" : "bg-default-100"
-                  }`}>
-                    <UserPlusIcon
-                      className={`w-6 h-6 ${
-                        instructorMode === "crear" ? "text-danger" : "text-default-500"
-                      }`}
-                    />
+                  <div className={`p-2 rounded-full transition-all ${instructorMode === "crear" ? "bg-danger/10" : "bg-default-100"}`}>
+                    <UserPlusIcon className={`w-6 h-6 ${instructorMode === "crear" ? "text-danger" : "text-default-500"}`} />
                   </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      instructorMode === "crear" ? "text-danger" : "text-default-600"
-                    }`}
-                  >
+                  <span className={`text-sm font-semibold ${instructorMode === "crear" ? "text-danger" : "text-default-600"}`}>
                     Crear nuevo
                   </span>
-                  <span className="text-xs text-default-400">
-                    Registrar instructor
-                  </span>
+                  <span className="text-xs text-default-400">Registrar instructor</span>
                 </CardBody>
               </Card>
 
@@ -597,25 +565,13 @@ export default function CursoModal({
                 }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${
-                    instructorMode === "despues" ? "bg-warning/10" : "bg-default-100"
-                  }`}>
-                    <ClockIcon
-                      className={`w-6 h-6 ${
-                        instructorMode === "despues" ? "text-warning" : "text-default-500"
-                      }`}
-                    />
+                  <div className={`p-2 rounded-full transition-all ${instructorMode === "despues" ? "bg-warning/10" : "bg-default-100"}`}>
+                    <ClockIcon className={`w-6 h-6 ${instructorMode === "despues" ? "text-warning" : "text-default-500"}`} />
                   </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      instructorMode === "despues" ? "text-warning" : "text-default-600"
-                    }`}
-                  >
+                  <span className={`text-sm font-semibold ${instructorMode === "despues" ? "text-warning" : "text-default-600"}`}>
                     Asignar después
                   </span>
-                  <span className="text-xs text-default-400">
-                    Pendiente
-                  </span>
+                  <span className="text-xs text-default-400">Pendiente</span>
                 </CardBody>
               </Card>
             </div>
@@ -683,9 +639,7 @@ export default function CursoModal({
                     isInvalid={!!errors.instructorId}
                     errorMessage={errors.instructorId}
                     size="lg"
-                    classNames={{
-                      label: "font-medium",
-                    }}
+                    classNames={{ label: "font-medium" }}
                     startContent={<MagnifyingGlassIcon className="w-4 h-4 text-default-400" />}
                   >
                     {(item: any) => (
