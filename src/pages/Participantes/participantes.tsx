@@ -6,6 +6,7 @@ import {
   Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
   Skeleton, Select, SelectItem, Autocomplete, AutocompleteItem,
   Popover, PopoverTrigger, PopoverContent, Divider, Badge,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from "@heroui/react";
 import {
   PlusIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, FunnelIcon, XMarkIcon,
@@ -13,8 +14,9 @@ import {
 import {
   EnvelopeIcon, PhoneIcon, BuildingOfficeIcon,
   CheckCircleIcon, ClockIcon, XCircleIcon, ArrowPathIcon,
-  UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon,
+  UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon, TrashIcon,
 } from "@heroicons/react/24/outline";
+import { sileo } from "sileo";
 
 import Sidebar from "../../components/common/Sidebar";
 import ParticipanteModal from "../../components/modals/Participante/participanteModal";
@@ -98,7 +100,7 @@ function StatCard({ Icon, label, value, colorBg, loading }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CursosCell — cursos expandibles con chip de estado de pago
+// CursosCell
 // ─────────────────────────────────────────────────────────────────────────────
 function CursosCell({ inscripciones }: { inscripciones: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -141,7 +143,7 @@ function CursosCell({ inscripciones }: { inscripciones: any[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FiltrosPanel — popover con los 4 filtros
+// FiltrosPanel
 // ─────────────────────────────────────────────────────────────────────────────
 function FiltrosPanel({
   filtros, onChange, onReset,
@@ -194,24 +196,16 @@ function FiltrosPanel({
           }}>
           <SelectItem key="todos" textValue="Todos los estados">Todos los estados</SelectItem>
           <SelectItem key="PAGADO" textValue="Pagado">
-            <div className="flex items-center gap-2">
-              <CheckCircleIcon className="w-4 h-4 text-success-500" />Pagado
-            </div>
+            <div className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-success-500" />Pagado</div>
           </SelectItem>
           <SelectItem key="PENDIENTE" textValue="Pendiente">
-            <div className="flex items-center gap-2">
-              <ClockIcon className="w-4 h-4 text-warning-500" />Pendiente
-            </div>
+            <div className="flex items-center gap-2"><ClockIcon className="w-4 h-4 text-warning-500" />Pendiente</div>
           </SelectItem>
           <SelectItem key="CANCELADO" textValue="Cancelado">
-            <div className="flex items-center gap-2">
-              <XCircleIcon className="w-4 h-4 text-danger-500" />Cancelado
-            </div>
+            <div className="flex items-center gap-2"><XCircleIcon className="w-4 h-4 text-danger-500" />Cancelado</div>
           </SelectItem>
           <SelectItem key="REEMBOLSADO" textValue="Reembolsado">
-            <div className="flex items-center gap-2">
-              <ArrowPathIcon className="w-4 h-4 text-default-500" />Reembolsado
-            </div>
+            <div className="flex items-center gap-2"><ArrowPathIcon className="w-4 h-4 text-default-500" />Reembolsado</div>
           </SelectItem>
         </Select>
       </div>
@@ -278,6 +272,11 @@ export default function Participantes() {
   const [nombreCreado, setNombreCreado]   = useState("");
   const [aEditar, setAEditar]             = useState<any | null>(null);
 
+  // Estado para el modal de eliminación
+  const [eliminarModalAbierto, setEliminarModalAbierto] = useState(false);
+  const [participanteAEliminar, setParticipanteAEliminar] = useState<{ id: number; nombre: string } | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     try {
@@ -285,8 +284,12 @@ export default function Participantes() {
       const data = await fetchParticipantes();
       setTodos(data);
       setPage(1);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+      sileo.error({ title: "Error al cargar los participantes" });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -360,14 +363,51 @@ export default function Participantes() {
   const handleCreado = (nuevo: any) => {
     const p = nuevo?.data ?? nuevo;
     setNombreCreado([p?.nombre, p?.apellidoPaterno].filter(Boolean).join(" ") || "El participante");
+    sileo.success({
+      title: "Participante registrado",
+      description: [p?.nombre, p?.apellidoPaterno].filter(Boolean).join(" "),
+    });
     cargar();
     setTimeout(() => setSiguienteOpen(true), 400);
   };
-  const handleEditado = () => { setModalOpen(false); setAEditar(null); cargar(); };
-  const handleEliminar = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar este participante?")) return;
-    try { await deleteParticipante(id); cargar(); }
-    catch (e: any) { alert(e?.response?.data?.message ?? "No se pudo eliminar."); }
+
+  const handleEditado = () => {
+    setModalOpen(false);
+    setAEditar(null);
+    sileo.success({ title: "Participante actualizado correctamente" });
+    cargar();
+  };
+
+  // Abre el modal de confirmación
+  const handleConfirmarEliminar = (p: any) => {
+    setParticipanteAEliminar({
+      id: p.id,
+      nombre: [p.nombre, p.apellidoPaterno].filter(Boolean).join(" "),
+    });
+    setEliminarModalAbierto(true);
+  };
+
+  // Ejecuta la eliminación tras confirmar
+  const handleEliminarConfirmado = async () => {
+    if (!participanteAEliminar) return;
+    try {
+      setEliminando(true);
+      await deleteParticipante(participanteAEliminar.id);
+      setEliminarModalAbierto(false);
+      sileo.success({
+        title: "Participante eliminado",
+        description: `"${participanteAEliminar.nombre}" ha sido eliminado`,
+      });
+      cargar();
+    } catch (e: any) {
+      sileo.error({
+        title: "Error al eliminar",
+        description: e?.response?.data?.message ?? "No se pudo completar la operación",
+      });
+    } finally {
+      setEliminando(false);
+      setParticipanteAEliminar(null);
+    }
   };
 
   const opcionesSiguiente: SiguientePasoOpcion[] = [{
@@ -383,11 +423,8 @@ export default function Participantes() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
-
-      {/* SIDEBAR con drawer */}
       <Sidebar />
 
-      {/* CONTENIDO */}
       <main className="flex-1 p-6 space-y-6 overflow-y-auto min-w-0">
 
         {/* HEADER */}
@@ -409,10 +446,10 @@ export default function Participantes() {
 
         {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard Icon={UserGroupIcon}   label="Total registrados"  value={stats.total}     colorBg="bg-slate-500"   loading={loading} />
-          <StatCard Icon={StarIcon}        label="Afiliados"           value={stats.afiliados} colorBg="bg-amber-500"   loading={loading} />
-          <StatCard Icon={AcademicCapIcon} label="Con cursos"          value={stats.conCurso}  colorBg="bg-indigo-500"  loading={loading} />
-          <StatCard Icon={BanknotesIcon}   label="Con pago completo"   value={stats.pagados}   colorBg="bg-emerald-500" loading={loading} />
+          <StatCard Icon={UserGroupIcon}   label="Total registrados" value={stats.total}     colorBg="bg-slate-500"   loading={loading} />
+          <StatCard Icon={StarIcon}        label="Afiliados"          value={stats.afiliados} colorBg="bg-amber-500"   loading={loading} />
+          <StatCard Icon={AcademicCapIcon} label="Con cursos"         value={stats.conCurso}  colorBg="bg-indigo-500"  loading={loading} />
+          <StatCard Icon={BanknotesIcon}   label="Con pago completo"  value={stats.pagados}   colorBg="bg-emerald-500" loading={loading} />
         </div>
 
         {/* BUSCADOR + FILTROS */}
@@ -482,7 +519,7 @@ export default function Participantes() {
           </div>
         )}
 
-        {/* ── TABLA ────────────────────────────────────────────────────────── */}
+        {/* TABLA */}
         <Card>
           <CardBody className="p-0">
             <Table
@@ -512,7 +549,6 @@ export default function Participantes() {
               </TableHeader>
 
               {loading ? (
-                // MODO SKELETON
                 <TableBody items={Array.from({ length: SKELETON_COUNT }, (_, i) => ({ id: i }))}>
                   {(item) => (
                     <TableRow key={`sk-${item.id}`}>
@@ -544,7 +580,6 @@ export default function Participantes() {
                   )}
                 </TableBody>
               ) : paginados.length === 0 ? (
-                // MODO VACÍO
                 <TableBody emptyContent={
                   <div className="py-16 flex flex-col items-center gap-3 text-default-400">
                     <UserGroupIcon className="w-12 h-12 opacity-20" />
@@ -564,12 +599,10 @@ export default function Participantes() {
                   {[]}
                 </TableBody>
               ) : (
-                // MODO DATOS
                 <TableBody items={paginados}>
                   {(p: any) => (
                     <TableRow key={p.id} className="hover:bg-default-50/60 transition-colors">
 
-                      {/* Participante */}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${avatarColor(p.id)}`}>
@@ -584,7 +617,6 @@ export default function Participantes() {
                         </div>
                       </TableCell>
 
-                      {/* Contacto */}
                       <TableCell>
                         <div className="space-y-1">
                           {p.correo && (
@@ -605,7 +637,6 @@ export default function Participantes() {
                         </div>
                       </TableCell>
 
-                      {/* Empresa */}
                       <TableCell>
                         {p.empresa ? (
                           <Tooltip content={p.empresa.nombre} delay={500}>
@@ -619,19 +650,16 @@ export default function Participantes() {
                         )}
                       </TableCell>
 
-                      {/* Tipo */}
                       <TableCell>
                         <Chip size="sm" variant="flat" color={p.esAfiliado ? "warning" : "default"}>
                           {p.esAfiliado ? "Afiliado" : "Público"}
                         </Chip>
                       </TableCell>
 
-                      {/* Cursos */}
                       <TableCell>
                         <CursosCell inscripciones={p.inscripciones ?? []} />
                       </TableCell>
 
-                      {/* Acciones */}
                       <TableCell>
                         <div className="flex justify-center">
                           <Dropdown>
@@ -646,7 +674,7 @@ export default function Participantes() {
                                 Editar
                               </DropdownItem>
                               <DropdownItem key="delete" className="text-danger" color="danger"
-                                onPress={() => handleEliminar(p.id)}>
+                                onPress={() => handleConfirmarEliminar(p)}>
                                 Eliminar
                               </DropdownItem>
                             </DropdownMenu>
@@ -663,6 +691,42 @@ export default function Participantes() {
         </Card>
 
       </main>
+
+      {/* MODAL CONFIRMAR ELIMINACIÓN */}
+      <Modal
+        isOpen={eliminarModalAbierto}
+        onClose={() => { setEliminarModalAbierto(false); setParticipanteAEliminar(null); }}
+        size="sm"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center gap-2 text-danger">
+                <TrashIcon className="w-5 h-5" />
+                Eliminar participante
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-default-600 text-sm">
+                  ¿Estás seguro de que deseas eliminar a{" "}
+                  <span className="font-semibold text-foreground">
+                    "{participanteAEliminar?.nombre}"
+                  </span>
+                  ? Esta acción no se puede deshacer.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose} isDisabled={eliminando}>
+                  Cancelar
+                </Button>
+                <Button color="danger" onPress={handleEliminarConfirmado} isLoading={eliminando}
+                  startContent={!eliminando && <TrashIcon className="w-4 h-4" />}>
+                  Eliminar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* MODALES */}
       <ParticipanteModal
