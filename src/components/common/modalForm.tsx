@@ -45,16 +45,17 @@ export default function ModalForm({
 }: ModalFormProps) {
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size={size}
-      scrollBehavior="inside"
-      classNames={{
-        base: "bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50", // ✅ Gradiente global
-        header: "border-b border-default-200 dark:border-default-800", // ✅ Línea separadora
-        footer: "border-t border-default-200 dark:border-default-800", // ✅ Línea separadora
-      }}
-    >
+  isOpen={isOpen}
+  onClose={onClose}
+  size={size}
+  scrollBehavior="inside"
+  hideCloseButton
+  classNames={{
+    base: "bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50",
+    header: "border-b border-default-200 dark:border-default-800",
+    footer: "border-t border-default-200 dark:border-default-800",
+  }}
+>
       <ModalContent>
         {(onClose) => (
           <>

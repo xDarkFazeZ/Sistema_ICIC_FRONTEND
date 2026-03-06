@@ -16,14 +16,17 @@ import {
   CheckCircleIcon, ClockIcon, XCircleIcon, ArrowPathIcon,
   UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon, TrashIcon,
 } from "@heroicons/react/24/outline";
+import { Eye } from "lucide-react";
 import { sileo } from "sileo";
 
 import Sidebar from "../../components/common/Sidebar";
 import ParticipanteModal from "../../components/modals/Participante/participanteModal";
+import ParticipanteDetalleModal from "../../components/modals/Participante/participanteDetalleModal";
 import SiguientePasoModal, { type SiguientePasoOpcion } from "../../components/common/siguientePasoModal";
 import { apiClient } from "../../services/api/client";
 import { buscarEmpresas } from "../../services/empresaService";
 import { listarCursos } from "../../services/cursoService";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // ── Ícono inline ──────────────────────────────────────────────────────────────
 const IcoUsuario = () => (
@@ -251,6 +254,8 @@ function FiltrosPanel({
 // Página principal
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Participantes() {
+  const { canCreate, canUpdate, canDelete } = usePermissions();
+
   const [todos, setTodos]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState("");
@@ -272,10 +277,14 @@ export default function Participantes() {
   const [nombreCreado, setNombreCreado]   = useState("");
   const [aEditar, setAEditar]             = useState<any | null>(null);
 
-  // Estado para el modal de eliminación
-  const [eliminarModalAbierto, setEliminarModalAbierto] = useState(false);
-  const [participanteAEliminar, setParticipanteAEliminar] = useState<{ id: number; nombre: string } | null>(null);
-  const [eliminando, setEliminando] = useState(false);
+  // ── Modal detalle ─────────────────────────────────────────────────────────
+  const [detalleAbierto, setDetalleAbierto]             = useState(false);
+  const [participanteDetalle, setParticipanteDetalle]   = useState<any | null>(null);
+
+  // ── Modal eliminar ────────────────────────────────────────────────────────
+  const [eliminarModalAbierto, setEliminarModalAbierto]     = useState(false);
+  const [participanteAEliminar, setParticipanteAEliminar]   = useState<{ id: number; nombre: string } | null>(null);
+  const [eliminando, setEliminando]                         = useState(false);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
@@ -360,6 +369,12 @@ export default function Participantes() {
     !!filtros.cursoId,
   ].filter(Boolean).length;
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleVerDetalle = (participante: any) => {
+    setParticipanteDetalle(participante);
+    setDetalleAbierto(true);
+  };
+
   const handleCreado = (nuevo: any) => {
     const p = nuevo?.data ?? nuevo;
     setNombreCreado([p?.nombre, p?.apellidoPaterno].filter(Boolean).join(" ") || "El participante");
@@ -378,7 +393,6 @@ export default function Participantes() {
     cargar();
   };
 
-  // Abre el modal de confirmación
   const handleConfirmarEliminar = (p: any) => {
     setParticipanteAEliminar({
       id: p.id,
@@ -387,7 +401,6 @@ export default function Participantes() {
     setEliminarModalAbierto(true);
   };
 
-  // Ejecuta la eliminación tras confirmar
   const handleEliminarConfirmado = async () => {
     if (!participanteAEliminar) return;
     try {
@@ -438,10 +451,12 @@ export default function Participantes() {
                 </p>
             }
           </div>
-          <Button color="danger" startContent={<PlusIcon className="w-4 h-4" />}
-            onPress={() => { setAEditar(null); setModalOpen(true); }}>
-            Nuevo Participante
-          </Button>
+          {canCreate && (
+            <Button color="danger" startContent={<PlusIcon className="w-4 h-4" />}
+              onPress={() => { setAEditar(null); setModalOpen(true); }}>
+              Nuevo Participante
+            </Button>
+          )}
         </div>
 
         {/* STATS */}
@@ -561,20 +576,10 @@ export default function Participantes() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-3 w-40 rounded-lg" />
-                          <Skeleton className="h-3 w-24 rounded-lg" />
-                        </div>
-                      </TableCell>
+                      <TableCell><div className="space-y-2"><Skeleton className="h-3 w-40 rounded-lg" /><Skeleton className="h-3 w-24 rounded-lg" /></div></TableCell>
                       <TableCell><Skeleton className="h-3 w-32 rounded-lg" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-52 rounded-lg" />
-                          <Skeleton className="h-4 w-40 rounded-lg" />
-                        </div>
-                      </TableCell>
+                      <TableCell><div className="space-y-2"><Skeleton className="h-4 w-52 rounded-lg" /><Skeleton className="h-4 w-40 rounded-lg" /></div></TableCell>
                       <TableCell><Skeleton className="h-8 w-8 rounded-lg mx-auto" /></TableCell>
                     </TableRow>
                   )}
@@ -603,15 +608,19 @@ export default function Participantes() {
                   {(p: any) => (
                     <TableRow key={p.id} className="hover:bg-default-50/60 transition-colors">
 
+                      {/* Participante — clic en nombre abre detalle */}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${avatarColor(p.id)}`}>
                             {getInitials(p.nombre, p.apellidoPaterno)}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm text-default-800">
+                            <button
+                              onClick={() => handleVerDetalle(p)}
+                              className="font-semibold text-sm text-default-800 hover:text-danger transition-colors text-left leading-snug cursor-pointer"
+                            >
                               {p.nombre} {p.apellidoPaterno}{p.apellidoMaterno ? ` ${p.apellidoMaterno}` : ""}
-                            </p>
+                            </button>
                             {p.curp && <p className="text-[11px] text-default-400">CURP: {p.curp}</p>}
                           </div>
                         </div>
@@ -660,6 +669,7 @@ export default function Participantes() {
                         <CursosCell inscripciones={p.inscripciones ?? []} />
                       </TableCell>
 
+                      {/* Acciones */}
                       <TableCell>
                         <div className="flex justify-center">
                           <Dropdown>
@@ -669,14 +679,27 @@ export default function Participantes() {
                               </Button>
                             </DropdownTrigger>
                             <DropdownMenu aria-label="Acciones del participante">
-                              <DropdownItem key="editar"
-                                onPress={() => { setAEditar(p); setModalOpen(true); }}>
-                                Editar
+                              {/* Ver detalles — siempre visible */}
+                              <DropdownItem key="ver" onPress={() => handleVerDetalle(p)}>
+                                <div className="flex items-center gap-2">
+                                  <Eye className="w-4 h-4 text-default-500" />
+                                  <span>Ver detalles</span>
+                                </div>
                               </DropdownItem>
-                              <DropdownItem key="delete" className="text-danger" color="danger"
-                                onPress={() => handleConfirmarEliminar(p)}>
-                                Eliminar
-                              </DropdownItem>
+
+                              {canUpdate && (
+                                <DropdownItem key="editar"
+                                  onPress={() => { setAEditar(p); setModalOpen(true); }}>
+                                  Editar
+                                </DropdownItem>
+                              )}
+
+                              {canDelete && (
+                                <DropdownItem key="delete" className="text-danger" color="danger"
+                                  onPress={() => handleConfirmarEliminar(p)}>
+                                  Eliminar
+                                </DropdownItem>
+                              )}
                             </DropdownMenu>
                           </Dropdown>
                         </div>
@@ -691,6 +714,13 @@ export default function Participantes() {
         </Card>
 
       </main>
+
+      {/* MODAL DETALLE */}
+      <ParticipanteDetalleModal
+        isOpen={detalleAbierto}
+        onClose={() => { setDetalleAbierto(false); setParticipanteDetalle(null); }}
+        participante={participanteDetalle}
+      />
 
       {/* MODAL CONFIRMAR ELIMINACIÓN */}
       <Modal
@@ -715,9 +745,7 @@ export default function Participantes() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="flat" onPress={onClose} isDisabled={eliminando}>
-                  Cancelar
-                </Button>
+                <Button variant="flat" onPress={onClose} isDisabled={eliminando}>Cancelar</Button>
                 <Button color="danger" onPress={handleEliminarConfirmado} isLoading={eliminando}
                   startContent={!eliminando && <TrashIcon className="w-4 h-4" />}>
                   Eliminar
