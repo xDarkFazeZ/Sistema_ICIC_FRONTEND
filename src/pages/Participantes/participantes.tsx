@@ -15,6 +15,7 @@ import {
   EnvelopeIcon, PhoneIcon, BuildingOfficeIcon,
   CheckCircleIcon, ClockIcon, XCircleIcon, ArrowPathIcon,
   UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon, TrashIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { Eye } from "lucide-react";
 import { sileo } from "sileo";
@@ -22,6 +23,7 @@ import { sileo } from "sileo";
 import Sidebar from "../../components/common/Sidebar";
 import ParticipanteModal from "../../components/modals/Participante/participanteModal";
 import ParticipanteDetalleModal from "../../components/modals/Participante/participanteDetalleModal";
+import EstadoPagoModal from "../../components/modals/Inscripcion/estadoPagoModal";
 import SiguientePasoModal, { type SiguientePasoOpcion } from "../../components/common/siguientePasoModal";
 import { apiClient } from "../../services/api/client";
 import { buscarEmpresas } from "../../services/empresaService";
@@ -278,13 +280,20 @@ export default function Participantes() {
   const [aEditar, setAEditar]             = useState<any | null>(null);
 
   // ── Modal detalle ─────────────────────────────────────────────────────────
-  const [detalleAbierto, setDetalleAbierto]             = useState(false);
-  const [participanteDetalle, setParticipanteDetalle]   = useState<any | null>(null);
+  const [detalleAbierto, setDetalleAbierto]           = useState(false);
+  const [participanteDetalle, setParticipanteDetalle] = useState<any | null>(null);
 
   // ── Modal eliminar ────────────────────────────────────────────────────────
-  const [eliminarModalAbierto, setEliminarModalAbierto]     = useState(false);
-  const [participanteAEliminar, setParticipanteAEliminar]   = useState<{ id: number; nombre: string } | null>(null);
-  const [eliminando, setEliminando]                         = useState(false);
+  const [eliminarModalAbierto, setEliminarModalAbierto]   = useState(false);
+  const [participanteAEliminar, setParticipanteAEliminar] = useState<{ id: number; nombre: string } | null>(null);
+  const [eliminando, setEliminando]                       = useState(false);
+
+  // ── Modal estado de pago ──────────────────────────────────────────────────
+  const [estadoPagoModal, setEstadoPagoModal] = useState<{
+    open: boolean;
+    inscripciones: any[];
+    nombreParticipante: string;
+  }>({ open: false, inscripciones: [], nombreParticipante: "" });
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
@@ -373,6 +382,23 @@ export default function Participantes() {
   const handleVerDetalle = (participante: any) => {
     setParticipanteDetalle(participante);
     setDetalleAbierto(true);
+  };
+
+  // Abre el modal de estado de pago — pasa todas las inscripciones del participante
+  const handleAbrirEstadoPago = (p: any) => {
+    const inscripciones: any[] = p.inscripciones ?? [];
+    if (!inscripciones.length) {
+      sileo.warning({
+        title: "Sin inscripciones",
+        description: `${p.nombre} ${p.apellidoPaterno} no tiene cursos inscritos.`,
+      });
+      return;
+    }
+    setEstadoPagoModal({
+      open: true,
+      inscripciones,
+      nombreParticipante: [p.nombre, p.apellidoPaterno].filter(Boolean).join(" "),
+    });
   };
 
   const handleCreado = (nuevo: any) => {
@@ -608,7 +634,7 @@ export default function Participantes() {
                   {(p: any) => (
                     <TableRow key={p.id} className="hover:bg-default-50/60 transition-colors">
 
-                      {/* Participante — clic en nombre abre detalle */}
+                      {/* Participante */}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${avatarColor(p.id)}`}>
@@ -669,7 +695,7 @@ export default function Participantes() {
                         <CursosCell inscripciones={p.inscripciones ?? []} />
                       </TableCell>
 
-                      {/* Acciones */}
+                      {/* ── Acciones ── */}
                       <TableCell>
                         <div className="flex justify-center">
                           <Dropdown>
@@ -679,27 +705,55 @@ export default function Participantes() {
                               </Button>
                             </DropdownTrigger>
                             <DropdownMenu aria-label="Acciones del participante">
-                              {/* Ver detalles — siempre visible */}
-                              <DropdownItem key="ver" onPress={() => handleVerDetalle(p)}>
-                                <div className="flex items-center gap-2">
-                                  <Eye className="w-4 h-4 text-default-500" />
-                                  <span>Ver detalles</span>
-                                </div>
+
+                              {/* Ver detalles */}
+                              <DropdownItem
+                                key="ver"
+                                startContent={<Eye className="w-4 h-4 text-default-500" />}
+                                onPress={() => handleVerDetalle(p)}
+                              >
+                                Ver detalles
                               </DropdownItem>
 
-                              {canUpdate && (
-                                <DropdownItem key="editar"
-                                  onPress={() => { setAEditar(p); setModalOpen(true); }}>
-                                  Editar
+                              {/* Editar participante */}
+                              {canUpdate ? (
+                                <DropdownItem
+                                  key="editar"
+                                  onPress={() => { setAEditar(p); setModalOpen(true); }}
+                                >
+                                  Editar participante
                                 </DropdownItem>
-                              )}
+                              ) : null}
 
-                              {canDelete && (
-                                <DropdownItem key="delete" className="text-danger" color="danger"
-                                  onPress={() => handleConfirmarEliminar(p)}>
+                              {/* ── NUEVO: Editar estado de pago ── */}
+                              {canUpdate && (p.inscripciones?.length ?? 0) > 0 ? (
+                                <DropdownItem
+                                  key="estado-pago"
+                                  startContent={<CurrencyDollarIcon className="w-4 h-4 text-warning-500" />}
+                                  onPress={() => handleAbrirEstadoPago(p)}
+                                  description={
+                                    (p.inscripciones?.length ?? 0) > 1
+                                      ? `${p.inscripciones.length} inscripciones`
+                                      : p.inscripciones?.[0]?.curso?.nombre ?? ""
+                                  }
+                                >
+                                  Editar estado de pago
+                                </DropdownItem>
+                              ) : null}
+
+                              {/* Eliminar */}
+                              {canDelete ? (
+                                <DropdownItem
+                                  key="delete"
+                                  className="text-danger"
+                                  color="danger"
+                                  startContent={<TrashIcon className="w-4 h-4" />}
+                                  onPress={() => handleConfirmarEliminar(p)}
+                                >
                                   Eliminar
                                 </DropdownItem>
-                              )}
+                              ) : null}
+
                             </DropdownMenu>
                           </Dropdown>
                         </div>
@@ -715,14 +769,23 @@ export default function Participantes() {
 
       </main>
 
-      {/* MODAL DETALLE */}
+      {/* ── MODAL DETALLE ── */}
       <ParticipanteDetalleModal
         isOpen={detalleAbierto}
         onClose={() => { setDetalleAbierto(false); setParticipanteDetalle(null); }}
         participante={participanteDetalle}
       />
 
-      {/* MODAL CONFIRMAR ELIMINACIÓN */}
+      {/* ── MODAL ESTADO DE PAGO ── */}
+      <EstadoPagoModal
+        isOpen={estadoPagoModal.open}
+        onClose={() => setEstadoPagoModal({ open: false, inscripciones: [], nombreParticipante: "" })}
+        onSuccess={() => cargar()}
+        inscripciones={estadoPagoModal.inscripciones}
+        nombreParticipante={estadoPagoModal.nombreParticipante}
+      />
+
+      {/* ── MODAL CONFIRMAR ELIMINACIÓN ── */}
       <Modal
         isOpen={eliminarModalAbierto}
         onClose={() => { setEliminarModalAbierto(false); setParticipanteAEliminar(null); }}
@@ -756,7 +819,7 @@ export default function Participantes() {
         </ModalContent>
       </Modal>
 
-      {/* MODALES */}
+      {/* ── MODALES CREACIÓN / EDICIÓN ── */}
       <ParticipanteModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setAEditar(null); }}

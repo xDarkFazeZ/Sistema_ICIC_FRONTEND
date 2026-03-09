@@ -11,20 +11,19 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 interface ModalFormProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string | React.ReactNode; // ✅ Ahora acepta ReactNode para títulos con iconos
+  title: string | React.ReactNode;
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "full";
   isLoading?: boolean;
   formId?: string;
-  // ✅ Nuevas props para personalizar el footer
-  hideFooter?: boolean; // Para ocultar el footer por completo
-  hideCancelButton?: boolean; // Para ocultar solo el botón cancelar
-  submitText?: string; // Texto personalizado para el botón submit
-  onSubmit?: () => void; // Para manejar submit sin form
-  customFooter?: React.ReactNode; // Footer completamente personalizado
-  // ✅ Personalización del header
-  hideCloseButton?: boolean; // Para ocultar el botón de cerrar
-  headerClassName?: string; // Clases personalizadas para el header
+  hideFooter?: boolean;
+  hideCancelButton?: boolean;
+  submitText?: string;
+  onSubmit?: () => void;
+  customFooter?: React.ReactNode;
+  hideCloseButton?: boolean;
+  headerClassName?: string;
+  className?: string;
 }
 
 export default function ModalForm({
@@ -42,40 +41,43 @@ export default function ModalForm({
   customFooter,
   hideCloseButton = false,
   headerClassName = "",
+  className = "",
 }: ModalFormProps) {
   return (
     <Modal
-  isOpen={isOpen}
-  onClose={onClose}
-  size={size}
-  scrollBehavior="inside"
-  hideCloseButton
-  classNames={{
-    base: "bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50",
-    header: "border-b border-default-200 dark:border-default-800",
-    footer: "border-t border-default-200 dark:border-default-800",
-  }}
->
+      isOpen={isOpen}
+      onClose={onClose}
+      size={size}
+      scrollBehavior="inside"
+      hideCloseButton
+      classNames={{
+        // ✅ Fondo sólido tanto en light como en dark — sin opacidad
+        base: `bg-white dark:bg-gray-900 ${className}`,
+        header: "border-b border-default-200 dark:border-default-700",
+        body: "bg-white dark:bg-gray-900",
+        footer: "border-t border-default-200 dark:border-default-700 bg-white dark:bg-gray-900",
+      }}
+    >
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className={`flex items-center justify-between ${headerClassName}`}>
-              <div className="flex items-center gap-2">
+            <ModalHeader className={`flex items-center justify-between bg-white dark:bg-gray-900 ${headerClassName}`}>
+              <div className="flex items-center gap-2 text-gray-900 dark:text-white">
                 {title}
               </div>
               {!hideCloseButton && (
-                <Button 
-                  isIconOnly 
-                  variant="light" 
+                <Button
+                  isIconOnly
+                  variant="light"
                   onPress={onClose}
-                  className="text-default-400 hover:text-default-600"
+                  className="text-default-400 hover:text-default-600 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </Button>
               )}
             </ModalHeader>
 
-            <ModalBody className="py-6">
+            <ModalBody className="py-6 bg-white dark:bg-gray-900">
               {children}
             </ModalBody>
 
@@ -86,8 +88,8 @@ export default function ModalForm({
                 ) : (
                   <>
                     {!hideCancelButton && (
-                      <Button 
-                        variant="light" 
+                      <Button
+                        variant="light"
                         onPress={onClose}
                         className="font-medium"
                       >

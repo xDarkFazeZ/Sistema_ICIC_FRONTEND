@@ -1,79 +1,166 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
-  Button,
   Spinner,
-  Avatar,
-  Switch,
-  Divider,
-  Chip,
 } from "@heroui/react";
 import {
-  SunIcon,
-  MoonIcon,
-  ArrowRightOnRectangleIcon,
-  Bars3Icon,
-  XMarkIcon,
   BookOpenIcon,
   UserGroupIcon,
   AcademicCapIcon,
   ChartBarIcon,
   PlusIcon,
   ArrowRightIcon,
+  CalendarIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/solid";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
+import { sileo } from "sileo";
 
-// Importar modales (en minúsculas como tus archivos)
+// Importar modales
 import CursoModal from "../components/modals/Cursos/cursosModal";
 import InstructorModal from "../components/modals/Instructor/instructorModal";
 import ParticipanteModal from "../components/modals/Participante/participanteModal";
+import ParticipanteDetalleModal from "../components/modals/Participante/participanteDetalleModal";
+import EstadoPagoModal from "../components/modals/Inscripcion/estadoPagoModal";
 
 import Sidebar from "../components/common/Sidebar";
-// Sidebar moved to reusable component
+
+// Importar servicios y componentes de gráficos
+import { dashboardService } from "../services/dashboardService";
+import GraficoBarras from "../components/dashboard/GraficosBarras";
+import GraficoPastel from "../components/dashboard/GraficoPastel";
+import CalendarioCursos from "../components/dashboard/CalendarioCursos";
+import TablaPagosPendientes from "../components/dashboard/TablaPagosPendientes";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
+  // Estados para datos del dashboard
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    inscripcionesPorMes: [],
+    distribucionCursos: [],
+    cursosConEstado: [],
+    pagosPendientes: []
+  });
+
   // Estados para los modales
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
   const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
   const [modalParticipanteAbierto, setModalParticipanteAbierto] = useState(false);
-
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Estados para modales de pago
+  const [detalleParticipanteModal, setDetalleParticipanteModal] = useState({
+    isOpen: false,
+    participante: null as any
+  });
+
+  const [estadoPagoModal, setEstadoPagoModal] = useState({
+    isOpen: false,
+    inscripciones: [] as any[],
+    nombreParticipante: ""
+  });
+
+  // Cargar datos del dashboard
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const data = await dashboardService.getDashboardData();
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error cargando datos del dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
     setTimeout(() => { logout(); navigate("/login"); }, 800);
   };
 
-  const getInitials = () => {
-    if (!user) return "U";
-    return `${(user.nombre || "").charAt(0)}${(user.apellidoPaterno || "").charAt(0)}`.toUpperCase();
-  };
-
-
   // Manejadores de éxito para los modales
-  const handleCursoCreado = (nuevoCurso: any) => {
+  const handleCursoCreado = async (nuevoCurso: any) => {
     console.log("Curso creado:", nuevoCurso);
     setModalCursoAbierto(false);
-    // Aquí puedes mostrar una notificación de éxito
+    try {
+      const data = await dashboardService.getDashboardData();
+      setDashboardData(data);
+    } catch (error) {
+      console.error('Error recargando datos:', error);
+    }
   };
 
-  const handleInstructorCreado = (nuevoInstructor: any) => {
+  const handleInstructorCreado = async (nuevoInstructor: any) => {
     console.log("Instructor creado:", nuevoInstructor);
     setModalInstructorAbierto(false);
   };
 
-  const handleParticipanteCreado = (nuevoParticipante: any) => {
+  const handleParticipanteCreado = async (nuevoParticipante: any) => {
     console.log("Participante creado:", nuevoParticipante);
     setModalParticipanteAbierto(false);
+    try {
+      const data = await dashboardService.getDashboardData();
+      setDashboardData(data);
+    } catch (error) {
+      console.error('Error recargando datos:', error);
+    }
   };
 
-  // ── Spinner logout ────────────────────────────────────────────────────────
+  // Manejadores para la tabla de pagos
+  const handleVerDetalle = (pago: any) => {
+    setDetalleParticipanteModal({
+      isOpen: true,
+      participante: {
+        ...pago.participante,
+        id: pago.participante?.id || pago.id,
+        inscripciones: [{
+          id: pago.id,
+          curso: pago.curso,
+          estadoPago: pago.estadoPago,
+          montoFinal: pago.montoEsperado,
+          fechaPago: pago.inscritoEn
+        }]
+      }
+    });
+  };
+
+
+  const handleRegistrarPago = (pago: any) => {
+    setEstadoPagoModal({
+      isOpen: true,
+      inscripciones: [{
+        id: pago.id,
+        curso: pago.curso,
+        estadoPago: "PENDIENTE",
+        montoFinal: pago.montoEsperado,
+        montoPagado: 0,
+        fechaPago: pago.inscritoEn
+      }],
+      nombreParticipante: `${pago.participante?.nombre} ${pago.participante?.apellidoPaterno}`
+    });
+  };
+
+  const handleCancelarInscripcion = (pago: any) => {
+    if (window.confirm(`¿Estás seguro de cancelar la inscripción de ${pago.participante?.nombre}?`)) {
+      console.log('Cancelar inscripción:', pago);
+      sileo.success({
+        title: "Inscripción cancelada",
+        description: "La inscripción ha sido cancelada exitosamente"
+      });
+    }
+  };
+
+  // Spinner logout
   if (loggingOut) {
     return (
       <div className="min-h-screen flex flex-col gap-4 items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
@@ -90,7 +177,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
-
       <Sidebar />
 
       {/* CONTENIDO PRINCIPAL - Dashboard */}
@@ -115,7 +201,6 @@ export default function Dashboard() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
               {/* Alta de Participante */}
               <Card
                 isPressable
@@ -193,16 +278,95 @@ export default function Dashboard() {
                   <ArrowRightIcon className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </Card>
-
             </div>
           </div>
 
-          {/* Estadísticas y actividad reciente (igual) */}
-          {/* ... */}
+          {/* SECCIÓN DE GRÁFICOS Y ESTADÍSTICAS */}
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Spinner size="lg" color="danger" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Gráfico de Barras - Inscripciones por Mes */}
+              {dashboardData.inscripcionesPorMes.length > 0 && (
+                <Card className="p-6 bg-white dark:bg-gray-900">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                      <ChartBarIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Inscripciones por Mes
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Últimos 12 meses
+                      </p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <div style={{ minWidth: dashboardData.inscripcionesPorMes.length > 6 ? `${dashboardData.inscripcionesPorMes.length * 60}px` : '100%' }}>
+                      <GraficoBarras data={dashboardData.inscripcionesPorMes} />
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Gráfico de Pastel - Distribución por Curso */}
+              {dashboardData.distribucionCursos.length > 0 && (
+                <Card className="p-6 bg-white dark:bg-gray-900">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                      <ChartBarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Distribución por Curso
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Participantes inscritos por curso
+                      </p>
+                    </div>
+                  </div>
+                  <GraficoPastel data={dashboardData.distribucionCursos} />
+                </Card>
+              )}
+
+              {/* Calendario de Cursos - ancho completo */}
+              {dashboardData.cursosConEstado.length > 0 && (
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                      <CalendarIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Calendario de Cursos
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Visualiza los cursos por fecha
+                      </p>
+                    </div>
+                  </div>
+                  <CalendarioCursos cursos={dashboardData.cursosConEstado} />
+                </Card>
+              )}
+
+              {/* Tabla de Pagos Pendientes - ocupa ambas columnas */}
+              <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                <TablaPagosPendientes
+                  pagosPendientes={dashboardData.pagosPendientes}
+                  onVerDetalle={handleVerDetalle}
+                  onRegistrarPago={handleRegistrarPago}
+                  onCancelarInscripcion={handleCancelarInscripcion}
+                />
+              </Card>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* MODALES */}
+      {/* MODALES - Todos dentro del div principal */}
       <CursoModal
         isOpen={modalCursoAbierto}
         onClose={() => setModalCursoAbierto(false)}
@@ -219,6 +383,30 @@ export default function Dashboard() {
         isOpen={modalParticipanteAbierto}
         onClose={() => setModalParticipanteAbierto(false)}
         onSuccess={handleParticipanteCreado}
+      />
+
+      <ParticipanteDetalleModal
+        isOpen={detalleParticipanteModal.isOpen}
+        onClose={() => setDetalleParticipanteModal({ isOpen: false, participante: null })}
+        participante={detalleParticipanteModal.participante}
+      />
+
+      <EstadoPagoModal
+        isOpen={estadoPagoModal.isOpen}
+        onClose={() => setEstadoPagoModal({ isOpen: false, inscripciones: [], nombreParticipante: "" })}
+        inscripciones={estadoPagoModal.inscripciones}
+        nombreParticipante={estadoPagoModal.nombreParticipante}
+        onSuccess={(inscripcionActualizada) => {
+          const fetchDashboardData = async () => {
+            try {
+              const data = await dashboardService.getDashboardData();
+              setDashboardData(data);
+            } catch (error) {
+              console.error('Error recargando datos:', error);
+            }
+          };
+          fetchDashboardData();
+        }}
       />
     </div>
   );
