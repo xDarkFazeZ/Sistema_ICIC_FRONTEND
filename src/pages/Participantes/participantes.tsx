@@ -6,6 +6,7 @@ import {
   Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
   Skeleton, Select, SelectItem, Autocomplete, AutocompleteItem,
   Popover, PopoverTrigger, PopoverContent, Divider, Badge,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from "@heroui/react";
 import {
   PlusIcon, MagnifyingGlassIcon, EllipsisVerticalIcon, FunnelIcon, XMarkIcon,
@@ -13,15 +14,21 @@ import {
 import {
   EnvelopeIcon, PhoneIcon, BuildingOfficeIcon,
   CheckCircleIcon, ClockIcon, XCircleIcon, ArrowPathIcon,
-  UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon,
+  UserGroupIcon, AcademicCapIcon, BanknotesIcon, StarIcon, TrashIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
+import { Eye } from "lucide-react";
+import { sileo } from "sileo";
 
 import Sidebar from "../../components/common/Sidebar";
 import ParticipanteModal from "../../components/modals/Participante/participanteModal";
+import ParticipanteDetalleModal from "../../components/modals/Participante/participanteDetalleModal";
+import EstadoPagoModal from "../../components/modals/Inscripcion/estadoPagoModal";
 import SiguientePasoModal, { type SiguientePasoOpcion } from "../../components/common/siguientePasoModal";
 import { apiClient } from "../../services/api/client";
 import { buscarEmpresas } from "../../services/empresaService";
 import { listarCursos } from "../../services/cursoService";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // ── Ícono inline ──────────────────────────────────────────────────────────────
 const IcoUsuario = () => (
@@ -98,7 +105,7 @@ function StatCard({ Icon, label, value, colorBg, loading }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CursosCell — cursos expandibles con chip de estado de pago
+// CursosCell
 // ─────────────────────────────────────────────────────────────────────────────
 function CursosCell({ inscripciones }: { inscripciones: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -141,7 +148,7 @@ function CursosCell({ inscripciones }: { inscripciones: any[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FiltrosPanel — popover con los 4 filtros
+// FiltrosPanel
 // ─────────────────────────────────────────────────────────────────────────────
 function FiltrosPanel({
   filtros, onChange, onReset,
@@ -194,24 +201,16 @@ function FiltrosPanel({
           }}>
           <SelectItem key="todos" textValue="Todos los estados">Todos los estados</SelectItem>
           <SelectItem key="PAGADO" textValue="Pagado">
-            <div className="flex items-center gap-2">
-              <CheckCircleIcon className="w-4 h-4 text-success-500" />Pagado
-            </div>
+            <div className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-success-500" />Pagado</div>
           </SelectItem>
           <SelectItem key="PENDIENTE" textValue="Pendiente">
-            <div className="flex items-center gap-2">
-              <ClockIcon className="w-4 h-4 text-warning-500" />Pendiente
-            </div>
+            <div className="flex items-center gap-2"><ClockIcon className="w-4 h-4 text-warning-500" />Pendiente</div>
           </SelectItem>
           <SelectItem key="CANCELADO" textValue="Cancelado">
-            <div className="flex items-center gap-2">
-              <XCircleIcon className="w-4 h-4 text-danger-500" />Cancelado
-            </div>
+            <div className="flex items-center gap-2"><XCircleIcon className="w-4 h-4 text-danger-500" />Cancelado</div>
           </SelectItem>
           <SelectItem key="REEMBOLSADO" textValue="Reembolsado">
-            <div className="flex items-center gap-2">
-              <ArrowPathIcon className="w-4 h-4 text-default-500" />Reembolsado
-            </div>
+            <div className="flex items-center gap-2"><ArrowPathIcon className="w-4 h-4 text-default-500" />Reembolsado</div>
           </SelectItem>
         </Select>
       </div>
@@ -257,6 +256,8 @@ function FiltrosPanel({
 // Página principal
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Participantes() {
+  const { canCreate, canUpdate, canDelete } = usePermissions();
+
   const [todos, setTodos]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState("");
@@ -278,6 +279,22 @@ export default function Participantes() {
   const [nombreCreado, setNombreCreado]   = useState("");
   const [aEditar, setAEditar]             = useState<any | null>(null);
 
+  // ── Modal detalle ─────────────────────────────────────────────────────────
+  const [detalleAbierto, setDetalleAbierto]           = useState(false);
+  const [participanteDetalle, setParticipanteDetalle] = useState<any | null>(null);
+
+  // ── Modal eliminar ────────────────────────────────────────────────────────
+  const [eliminarModalAbierto, setEliminarModalAbierto]   = useState(false);
+  const [participanteAEliminar, setParticipanteAEliminar] = useState<{ id: number; nombre: string } | null>(null);
+  const [eliminando, setEliminando]                       = useState(false);
+
+  // ── Modal estado de pago ──────────────────────────────────────────────────
+  const [estadoPagoModal, setEstadoPagoModal] = useState<{
+    open: boolean;
+    inscripciones: any[];
+    nombreParticipante: string;
+  }>({ open: false, inscripciones: [], nombreParticipante: "" });
+
   // ── Carga inicial ─────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     try {
@@ -285,8 +302,12 @@ export default function Participantes() {
       const data = await fetchParticipantes();
       setTodos(data);
       setPage(1);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+      sileo.error({ title: "Error al cargar los participantes" });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -357,17 +378,75 @@ export default function Participantes() {
     !!filtros.cursoId,
   ].filter(Boolean).length;
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleVerDetalle = (participante: any) => {
+    setParticipanteDetalle(participante);
+    setDetalleAbierto(true);
+  };
+
+  // Abre el modal de estado de pago — pasa todas las inscripciones del participante
+  const handleAbrirEstadoPago = (p: any) => {
+    const inscripciones: any[] = p.inscripciones ?? [];
+    if (!inscripciones.length) {
+      sileo.warning({
+        title: "Sin inscripciones",
+        description: `${p.nombre} ${p.apellidoPaterno} no tiene cursos inscritos.`,
+      });
+      return;
+    }
+    setEstadoPagoModal({
+      open: true,
+      inscripciones,
+      nombreParticipante: [p.nombre, p.apellidoPaterno].filter(Boolean).join(" "),
+    });
+  };
+
   const handleCreado = (nuevo: any) => {
     const p = nuevo?.data ?? nuevo;
     setNombreCreado([p?.nombre, p?.apellidoPaterno].filter(Boolean).join(" ") || "El participante");
+    sileo.success({
+      title: "Participante registrado",
+      description: [p?.nombre, p?.apellidoPaterno].filter(Boolean).join(" "),
+    });
     cargar();
     setTimeout(() => setSiguienteOpen(true), 400);
   };
-  const handleEditado = () => { setModalOpen(false); setAEditar(null); cargar(); };
-  const handleEliminar = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar este participante?")) return;
-    try { await deleteParticipante(id); cargar(); }
-    catch (e: any) { alert(e?.response?.data?.message ?? "No se pudo eliminar."); }
+
+  const handleEditado = () => {
+    setModalOpen(false);
+    setAEditar(null);
+    sileo.success({ title: "Participante actualizado correctamente" });
+    cargar();
+  };
+
+  const handleConfirmarEliminar = (p: any) => {
+    setParticipanteAEliminar({
+      id: p.id,
+      nombre: [p.nombre, p.apellidoPaterno].filter(Boolean).join(" "),
+    });
+    setEliminarModalAbierto(true);
+  };
+
+  const handleEliminarConfirmado = async () => {
+    if (!participanteAEliminar) return;
+    try {
+      setEliminando(true);
+      await deleteParticipante(participanteAEliminar.id);
+      setEliminarModalAbierto(false);
+      sileo.success({
+        title: "Participante eliminado",
+        description: `"${participanteAEliminar.nombre}" ha sido eliminado`,
+      });
+      cargar();
+    } catch (e: any) {
+      sileo.error({
+        title: "Error al eliminar",
+        description: e?.response?.data?.message ?? "No se pudo completar la operación",
+      });
+    } finally {
+      setEliminando(false);
+      setParticipanteAEliminar(null);
+    }
   };
 
   const opcionesSiguiente: SiguientePasoOpcion[] = [{
@@ -383,11 +462,8 @@ export default function Participantes() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
-
-      {/* SIDEBAR con drawer */}
       <Sidebar />
 
-      {/* CONTENIDO */}
       <main className="flex-1 p-6 space-y-6 overflow-y-auto min-w-0">
 
         {/* HEADER */}
@@ -401,18 +477,20 @@ export default function Participantes() {
                 </p>
             }
           </div>
-          <Button color="danger" startContent={<PlusIcon className="w-4 h-4" />}
-            onPress={() => { setAEditar(null); setModalOpen(true); }}>
-            Nuevo Participante
-          </Button>
+          {canCreate && (
+            <Button color="danger" startContent={<PlusIcon className="w-4 h-4" />}
+              onPress={() => { setAEditar(null); setModalOpen(true); }}>
+              Nuevo Participante
+            </Button>
+          )}
         </div>
 
         {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard Icon={UserGroupIcon}   label="Total registrados"  value={stats.total}     colorBg="bg-slate-500"   loading={loading} />
-          <StatCard Icon={StarIcon}        label="Afiliados"           value={stats.afiliados} colorBg="bg-amber-500"   loading={loading} />
-          <StatCard Icon={AcademicCapIcon} label="Con cursos"          value={stats.conCurso}  colorBg="bg-indigo-500"  loading={loading} />
-          <StatCard Icon={BanknotesIcon}   label="Con pago completo"   value={stats.pagados}   colorBg="bg-emerald-500" loading={loading} />
+          <StatCard Icon={UserGroupIcon}   label="Total registrados" value={stats.total}     colorBg="bg-slate-500"   loading={loading} />
+          <StatCard Icon={StarIcon}        label="Afiliados"          value={stats.afiliados} colorBg="bg-amber-500"   loading={loading} />
+          <StatCard Icon={AcademicCapIcon} label="Con cursos"         value={stats.conCurso}  colorBg="bg-indigo-500"  loading={loading} />
+          <StatCard Icon={BanknotesIcon}   label="Con pago completo"  value={stats.pagados}   colorBg="bg-emerald-500" loading={loading} />
         </div>
 
         {/* BUSCADOR + FILTROS */}
@@ -482,7 +560,7 @@ export default function Participantes() {
           </div>
         )}
 
-        {/* ── TABLA ────────────────────────────────────────────────────────── */}
+        {/* TABLA */}
         <Card>
           <CardBody className="p-0">
             <Table
@@ -512,7 +590,6 @@ export default function Participantes() {
               </TableHeader>
 
               {loading ? (
-                // MODO SKELETON
                 <TableBody items={Array.from({ length: SKELETON_COUNT }, (_, i) => ({ id: i }))}>
                   {(item) => (
                     <TableRow key={`sk-${item.id}`}>
@@ -525,26 +602,15 @@ export default function Participantes() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-3 w-40 rounded-lg" />
-                          <Skeleton className="h-3 w-24 rounded-lg" />
-                        </div>
-                      </TableCell>
+                      <TableCell><div className="space-y-2"><Skeleton className="h-3 w-40 rounded-lg" /><Skeleton className="h-3 w-24 rounded-lg" /></div></TableCell>
                       <TableCell><Skeleton className="h-3 w-32 rounded-lg" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-52 rounded-lg" />
-                          <Skeleton className="h-4 w-40 rounded-lg" />
-                        </div>
-                      </TableCell>
+                      <TableCell><div className="space-y-2"><Skeleton className="h-4 w-52 rounded-lg" /><Skeleton className="h-4 w-40 rounded-lg" /></div></TableCell>
                       <TableCell><Skeleton className="h-8 w-8 rounded-lg mx-auto" /></TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               ) : paginados.length === 0 ? (
-                // MODO VACÍO
                 <TableBody emptyContent={
                   <div className="py-16 flex flex-col items-center gap-3 text-default-400">
                     <UserGroupIcon className="w-12 h-12 opacity-20" />
@@ -564,7 +630,6 @@ export default function Participantes() {
                   {[]}
                 </TableBody>
               ) : (
-                // MODO DATOS
                 <TableBody items={paginados}>
                   {(p: any) => (
                     <TableRow key={p.id} className="hover:bg-default-50/60 transition-colors">
@@ -576,15 +641,17 @@ export default function Participantes() {
                             {getInitials(p.nombre, p.apellidoPaterno)}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm text-default-800">
+                            <button
+                              onClick={() => handleVerDetalle(p)}
+                              className="font-semibold text-sm text-default-800 hover:text-danger transition-colors text-left leading-snug cursor-pointer"
+                            >
                               {p.nombre} {p.apellidoPaterno}{p.apellidoMaterno ? ` ${p.apellidoMaterno}` : ""}
-                            </p>
+                            </button>
                             {p.curp && <p className="text-[11px] text-default-400">CURP: {p.curp}</p>}
                           </div>
                         </div>
                       </TableCell>
 
-                      {/* Contacto */}
                       <TableCell>
                         <div className="space-y-1">
                           {p.correo && (
@@ -605,7 +672,6 @@ export default function Participantes() {
                         </div>
                       </TableCell>
 
-                      {/* Empresa */}
                       <TableCell>
                         {p.empresa ? (
                           <Tooltip content={p.empresa.nombre} delay={500}>
@@ -619,19 +685,17 @@ export default function Participantes() {
                         )}
                       </TableCell>
 
-                      {/* Tipo */}
                       <TableCell>
                         <Chip size="sm" variant="flat" color={p.esAfiliado ? "warning" : "default"}>
                           {p.esAfiliado ? "Afiliado" : "Público"}
                         </Chip>
                       </TableCell>
 
-                      {/* Cursos */}
                       <TableCell>
                         <CursosCell inscripciones={p.inscripciones ?? []} />
                       </TableCell>
 
-                      {/* Acciones */}
+                      {/* ── Acciones ── */}
                       <TableCell>
                         <div className="flex justify-center">
                           <Dropdown>
@@ -641,14 +705,55 @@ export default function Participantes() {
                               </Button>
                             </DropdownTrigger>
                             <DropdownMenu aria-label="Acciones del participante">
-                              <DropdownItem key="editar"
-                                onPress={() => { setAEditar(p); setModalOpen(true); }}>
-                                Editar
+
+                              {/* Ver detalles */}
+                              <DropdownItem
+                                key="ver"
+                                startContent={<Eye className="w-4 h-4 text-default-500" />}
+                                onPress={() => handleVerDetalle(p)}
+                              >
+                                Ver detalles
                               </DropdownItem>
-                              <DropdownItem key="delete" className="text-danger" color="danger"
-                                onPress={() => handleEliminar(p.id)}>
-                                Eliminar
-                              </DropdownItem>
+
+                              {/* Editar participante */}
+                              {canUpdate ? (
+                                <DropdownItem
+                                  key="editar"
+                                  onPress={() => { setAEditar(p); setModalOpen(true); }}
+                                >
+                                  Editar participante
+                                </DropdownItem>
+                              ) : null}
+
+                              {/* ── NUEVO: Editar estado de pago ── */}
+                              {canUpdate && (p.inscripciones?.length ?? 0) > 0 ? (
+                                <DropdownItem
+                                  key="estado-pago"
+                                  startContent={<CurrencyDollarIcon className="w-4 h-4 text-warning-500" />}
+                                  onPress={() => handleAbrirEstadoPago(p)}
+                                  description={
+                                    (p.inscripciones?.length ?? 0) > 1
+                                      ? `${p.inscripciones.length} inscripciones`
+                                      : p.inscripciones?.[0]?.curso?.nombre ?? ""
+                                  }
+                                >
+                                  Editar estado de pago
+                                </DropdownItem>
+                              ) : null}
+
+                              {/* Eliminar */}
+                              {canDelete ? (
+                                <DropdownItem
+                                  key="delete"
+                                  className="text-danger"
+                                  color="danger"
+                                  startContent={<TrashIcon className="w-4 h-4" />}
+                                  onPress={() => handleConfirmarEliminar(p)}
+                                >
+                                  Eliminar
+                                </DropdownItem>
+                              ) : null}
+
                             </DropdownMenu>
                           </Dropdown>
                         </div>
@@ -664,7 +769,57 @@ export default function Participantes() {
 
       </main>
 
-      {/* MODALES */}
+      {/* ── MODAL DETALLE ── */}
+      <ParticipanteDetalleModal
+        isOpen={detalleAbierto}
+        onClose={() => { setDetalleAbierto(false); setParticipanteDetalle(null); }}
+        participante={participanteDetalle}
+      />
+
+      {/* ── MODAL ESTADO DE PAGO ── */}
+      <EstadoPagoModal
+        isOpen={estadoPagoModal.open}
+        onClose={() => setEstadoPagoModal({ open: false, inscripciones: [], nombreParticipante: "" })}
+        onSuccess={() => cargar()}
+        inscripciones={estadoPagoModal.inscripciones}
+        nombreParticipante={estadoPagoModal.nombreParticipante}
+      />
+
+      {/* ── MODAL CONFIRMAR ELIMINACIÓN ── */}
+      <Modal
+        isOpen={eliminarModalAbierto}
+        onClose={() => { setEliminarModalAbierto(false); setParticipanteAEliminar(null); }}
+        size="sm"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex items-center gap-2 text-danger">
+                <TrashIcon className="w-5 h-5" />
+                Eliminar participante
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-default-600 text-sm">
+                  ¿Estás seguro de que deseas eliminar a{" "}
+                  <span className="font-semibold text-foreground">
+                    "{participanteAEliminar?.nombre}"
+                  </span>
+                  ? Esta acción no se puede deshacer.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose} isDisabled={eliminando}>Cancelar</Button>
+                <Button color="danger" onPress={handleEliminarConfirmado} isLoading={eliminando}
+                  startContent={!eliminando && <TrashIcon className="w-4 h-4" />}>
+                  Eliminar
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* ── MODALES CREACIÓN / EDICIÓN ── */}
       <ParticipanteModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setAEditar(null); }}

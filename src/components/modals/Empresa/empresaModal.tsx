@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { Input } from "@heroui/react";
 import { sileo } from "sileo";
-import ModalForm from "../common/modalForm";
-import { crearEmpresa } from "../../services/empresaService";
+import ModalForm from "../../common/modalForm";
+import { crearEmpresa } from "../../../services/empresaService";
 import {
   BuildingOffice2Icon,
   IdentificationIcon,

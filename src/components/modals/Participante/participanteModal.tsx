@@ -21,8 +21,8 @@ import { DatePicker } from "@heroui/react";
 import { CalendarDate, parseDate } from "@internationalized/date";
 import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
-import InscripcionModal from "../inscripcionModal";
-import EmpresaModal from "../../modals/empresaModal";
+import InscripcionModal from "../Inscripcion/inscripcionModal";
+import EmpresaModal from "../../modals/Empresa/empresaModal";
 
 import { buscarEmpresas, obtenerEmpresa } from "../../../services/empresaService";
 import { listarCursos, obtenerCursoPorId } from "../../../services/cursoService";
@@ -604,7 +604,7 @@ export default function ParticipanteModal({
 
   const inputCN = {
     inputWrapper: [
-      "border border-slate-200 bg-white shadow-sm transition-all duration-200",
+      "border border-slate-200 bg-default-100 dark:bg-default-50/10 shadow-sm transition-all duration-200",
       "data-[hover=true]:border-indigo-300",
       "data-[focus=true]:border-indigo-500 data-[focus=true]:shadow-md data-[focus=true]:shadow-indigo-100/60",
       "data-[invalid=true]:border-rose-400 data-[invalid=true]:bg-rose-50/30",

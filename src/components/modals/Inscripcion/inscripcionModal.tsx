@@ -10,10 +10,10 @@ import {
   Chip,
 } from "@heroui/react";
 import { sileo } from "sileo";
-import ModalForm from "../common/modalForm";
-import { obtenerCursoPorId } from "../../services/cursoService";
-import { obtenerEmpresa } from "../../services/empresaService";
-import { crearInscripcion, actualizarInscripcion } from "../../services/inscripcionService";
+import ModalForm from "../../common/modalForm";
+import { obtenerCursoPorId } from "../../../services/cursoService";
+import { obtenerEmpresa } from "../../../services/empresaService";
+import { crearInscripcion, actualizarInscripcion } from "../../../services/inscripcionService";
 import {
   CurrencyDollarIcon,
   BuildingLibraryIcon,
