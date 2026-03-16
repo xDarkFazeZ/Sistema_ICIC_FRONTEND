@@ -34,6 +34,14 @@ const IconParticipantes = () => (
     <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
+const IconFecap = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <path d="M2 10h20" />
+    <path d="M6 15h4" />
+    <path d="M14 15h4" />
+  </svg>
+);
 
 type NavItem = {
   key: string;
@@ -49,6 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "cursos", label: "Cursos", icon: <IconCursos />, route: "/cursos", description: "Gestión de cursos e inscripciones" },
   { key: "instructores", label: "Instructores", icon: <IconInstructores />, route: "/instructores", description: "Alta y gestión de instructores" },
   { key: "participantes", label: "Participantes", icon: <IconParticipantes />, route: "/participantes", description: "Administración de participantes" },
+  { key: "fecap", label: "Saldo FECAP", icon: <IconFecap />, route: "/fecap", description: "Control de saldo FECAP por empresa"},
 ];
 
 export default function Sidebar() {

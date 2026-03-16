@@ -5,6 +5,8 @@ import Participantes from "./pages/Participantes/participantes";
 import Cursos from "./pages/Cursos/cursos";
 import Instructores from "./pages/Instructores/instructores";
 import ProtectedRoute from "./components/common/protectedRoute";
+import Fecap from "./pages/FECAP/fecap";
+
 
 export const router = createBrowserRouter([
   {
@@ -30,7 +32,12 @@ export const router = createBrowserRouter([
         path: "/instructores",
         element: <Instructores />,
       },
+      {
+        path: "/fecap",
+        element: <Fecap />,
+      },
     ],
+
   },
   {
     path: "/",
