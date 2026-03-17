@@ -1,9 +1,9 @@
-// components/modals/Empresa/empresaModal.tsx
 import { useState } from "react";
 import { Input } from "@heroui/react";
 import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 import { crearEmpresa } from "../../../services/empresaService";
+import { useEmpresaModal } from "./EmpresaModalContext";
 import {
   BuildingOffice2Icon,
   IdentificationIcon,
@@ -12,9 +12,6 @@ import {
   EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 
-// ──────────────────────────────────────────────
-// Validación RFC (persona moral e física)
-// ──────────────────────────────────────────────
 const RFC_REGEX = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
 
 function validarRFC(rfc: string): string | null {
@@ -24,85 +21,64 @@ function validarRFC(rfc: string): string | null {
   return null;
 }
 
-// ──────────────────────────────────────────────
-// Props
-// ──────────────────────────────────────────────
-
 interface EmpresaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Callback con la empresa recién creada para asignarla al participante */
   onSuccess: (empresa: { id: number; nombre: string; rfc: string; direccion: string }) => void;
 }
 
-// ──────────────────────────────────────────────
-// Estado inicial
-// ──────────────────────────────────────────────
-
 const INITIAL_FORM = {
-  nombre:   "",
-  rfc:      "",
+  nombre: "",
+  rfc: "",
   direccion: "",
   telefono: "",
-  correo:   "",
+  correo: "",
 };
 
-// ──────────────────────────────────────────────
-// Componente
-// ──────────────────────────────────────────────
-
 export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModalProps) {
-  const [form,        setForm]        = useState({ ...INITIAL_FORM });
-  const [errors,      setErrors]      = useState<Record<string, string>>({});
+  const [form, setForm] = useState({ ...INITIAL_FORM });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { origen } = useEmpresaModal();
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    // Limpiar error al escribir
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  // ── Validación local ──────────────────────
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!form.nombre.trim() || form.nombre.trim().length < 2) {
+    if (!form.nombre.trim() || form.nombre.trim().length < 2)
       newErrors.nombre = "El nombre debe tener al menos 2 caracteres";
-    }
-    if (form.nombre.trim().length > 100) {
+    if (form.nombre.trim().length > 100)
       newErrors.nombre = "El nombre no puede exceder 100 caracteres";
-    }
 
     const rfcError = validarRFC(form.rfc);
     if (rfcError) newErrors.rfc = rfcError;
 
-    if (!form.direccion.trim() || form.direccion.trim().length < 5) {
+    if (!form.direccion.trim() || form.direccion.trim().length < 5)
       newErrors.direccion = "La dirección debe tener al menos 5 caracteres";
-    }
-    if (form.direccion.trim().length > 200) {
+    if (form.direccion.trim().length > 200)
       newErrors.direccion = "La dirección no puede exceder 200 caracteres";
-    }
 
-    if (form.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo)) {
+    if (form.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo))
       newErrors.correo = "Correo electrónico inválido";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ── Submit ────────────────────────────────
   const handleSubmit = async () => {
     if (!validate()) return;
-
     setIsSubmitting(true);
     try {
       const payload = {
-        nombre:    form.nombre.trim(),
-        rfc:       form.rfc.trim().toUpperCase(),
+        nombre: form.nombre.trim(),
+        rfc: form.rfc.trim().toUpperCase(),
         direccion: form.direccion.trim(),
         ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
-        ...(form.correo.trim()   && { correo:   form.correo.trim()   }),
+        ...(form.correo.trim() && { correo: form.correo.trim() }),
       };
 
       const response = await crearEmpresa(payload);
@@ -110,15 +86,13 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
 
       sileo.success({
         title: "¡Empresa creada!",
-        description: `${empresaCreada.nombre} fue registrada y asignada correctamente`,
+        description: `${empresaCreada.nombre} fue registrada correctamente`,
       });
 
       onSuccess(empresaCreada);
       handleClose();
     } catch (error: any) {
       const msg = error?.response?.data?.message || error?.message || "Error al crear la empresa";
-
-      // Mostrar error de RFC duplicado de forma amigable
       if (msg.toLowerCase().includes("rfc") || msg.toLowerCase().includes("unique")) {
         setErrors((prev) => ({ ...prev, rfc: "Este RFC ya está registrado en el sistema" }));
       } else {
@@ -135,10 +109,6 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
     onClose();
   };
 
-  // ──────────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────────
-
   return (
     <ModalForm
       isOpen={isOpen}
@@ -151,21 +121,22 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
     >
       <div className="space-y-5 px-1">
 
-        {/* Aviso contextual */}
+        {/* Aviso contextual según origen */}
         <div className="flex items-start gap-3 p-3 rounded-xl bg-primary-50 border border-primary-200">
           <BuildingOffice2Icon className="w-5 h-5 text-primary-600 shrink-0 mt-0.5" />
           <p className="text-sm text-primary-700">
-            La empresa se creará y quedará asignada automáticamente al participante.
+            {origen === "fecap"
+              ? "La empresa se asignará para actualizar su saldo FECAP de inmediato."
+              : "La empresa se asignará al participante de manera automática."}
           </p>
         </div>
 
-        {/* ── Datos obligatorios ── */}
+        {/* Datos requeridos */}
         <div className="space-y-4">
           <p className="text-xs font-semibold text-default-500 uppercase tracking-wide">
             Datos requeridos
           </p>
 
-          {/* Nombre */}
           <Input
             label="Nombre o razón social"
             placeholder="Ej: Empresa Ejemplo S.A. de C.V."
@@ -178,7 +149,6 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
             isRequired
           />
 
-          {/* RFC */}
           <Input
             label="RFC"
             placeholder="Ej: EEM900101AB1"
@@ -192,7 +162,6 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
             isRequired
           />
 
-          {/* Dirección */}
           <Input
             label="Dirección"
             placeholder="Calle, número, colonia, municipio, estado"
@@ -206,14 +175,12 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
           />
         </div>
 
-        {/* ── Datos opcionales ── */}
+        {/* Datos opcionales */}
         <div className="space-y-4">
           <p className="text-xs font-semibold text-default-500 uppercase tracking-wide">
             Datos opcionales
           </p>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Teléfono */}
             <Input
               label="Teléfono"
               placeholder="Ej: 8001234567"
@@ -222,8 +189,6 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
               maxLength={15}
               startContent={<PhoneIcon className="w-4 h-4 text-default-400 shrink-0" />}
             />
-
-            {/* Correo */}
             <Input
               label="Correo electrónico"
               placeholder="contacto@empresa.com"

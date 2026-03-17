@@ -8,8 +8,10 @@ import {
   CardBody,
   Divider,
   Chip,
+  DatePicker,
 } from "@heroui/react";
 import { sileo } from "sileo";
+import { parseDate, type CalendarDate } from "@internationalized/date";
 import ModalForm from "../../common/modalForm";
 import { obtenerCursoPorId } from "../../../services/cursoService";
 import { obtenerEmpresa } from "../../../services/empresaService";
@@ -29,32 +31,31 @@ import {
 // ──────────────────────────────────────────────
 
 const METODOS_PAGO = [
-  { key: "VENTA_AFILIADO",    label: "Venta Afiliado",       icon: "👤", requiereEmpresa: false, requiereSaldo: false },
-  { key: "VENTA_PUBLICO",     label: "Venta Público General", icon: "🌐", requiereEmpresa: false, requiereSaldo: false },
-  { key: "CAPTACION_FEDERAL", label: "Captación Federal",    icon: "🏛️", requiereEmpresa: true,  requiereSaldo: true  },
-  { key: "CAPTACION_LOCAL",   label: "Captación Local",      icon: "🏢", requiereEmpresa: true,  requiereSaldo: true  },
-  { key: "FINANCIAMIENTO",    label: "Financiamiento",       icon: "📆", requiereEmpresa: false, requiereSaldo: false },
-  { key: "SIN_COSTO",         label: "Sin Costo",            icon: "🎁", requiereEmpresa: false, requiereSaldo: false },
-  { key: "VALE_AFILIACION",   label: "Vale de Afiliación",   icon: "🎫", requiereEmpresa: false, requiereSaldo: false },
+  { key: "VENTA_AFILIADO", label: "Venta Afiliado", icon: "👤", requiereEmpresa: false, requiereSaldo: false },
+  { key: "VENTA_PUBLICO", label: "Venta Público General", icon: "🌐", requiereEmpresa: false, requiereSaldo: false },
+  { key: "FECAP", label: "Saldo FECAP", icon: "🏗️", requiereEmpresa: true, requiereSaldo: true },
+  { key: "FINANCIAMIENTO", label: "Financiamiento", icon: "📆", requiereEmpresa: false, requiereSaldo: false },
+  { key: "SIN_COSTO", label: "Sin Costo", icon: "🎁", requiereEmpresa: false, requiereSaldo: false },
+  { key: "VALE_AFILIACION", label: "Vale de Afiliación", icon: "🎫", requiereEmpresa: false, requiereSaldo: false },
 ] as const;
 
 const TIPO_PRECIO = [
-  { key: "AFILIADO",        label: "Afiliado",        field: "precioAfiliado"   },
-  { key: "PUBLICO_GENERAL", label: "Público General", field: "precioPublico"    },
-  { key: "ESTUDIANTE",      label: "Estudiante",      field: "precioEstudiante" },
+  { key: "AFILIADO", label: "Afiliado", field: "precioAfiliado" },
+  { key: "PUBLICO_GENERAL", label: "Público General", field: "precioPublico" },
+  { key: "ESTUDIANTE", label: "Estudiante", field: "precioEstudiante" },
 ] as const;
 
 const ESTADO_PAGO = [
-  { key: "PENDIENTE",   label: "Pendiente"   },
-  { key: "PAGADO",      label: "Pagado"      },
-  { key: "CANCELADO",   label: "Cancelado"   },
+  { key: "PENDIENTE", label: "Pendiente" },
+  { key: "PAGADO", label: "Pagado" },
+  { key: "CANCELADO", label: "Cancelado" },
   { key: "REEMBOLSADO", label: "Reembolsado" },
 ] as const;
 
 const PERIODICIDAD = [
-  { key: "SEMANAL",   label: "Semanal"   },
+  { key: "SEMANAL", label: "Semanal" },
   { key: "QUINCENAL", label: "Quincenal" },
-  { key: "MENSUAL",   label: "Mensual"   },
+  { key: "MENSUAL", label: "Mensual" },
 ] as const;
 
 // ──────────────────────────────────────────────
@@ -82,10 +83,10 @@ function fmt(n: number | null | undefined) {
 function getPrecioCurso(curso: any, tipoPrecio: string): number {
   if (!curso) return 0;
   switch (tipoPrecio) {
-    case "AFILIADO":        return curso.precioAfiliado   ?? 0;
-    case "PUBLICO_GENERAL": return curso.precioPublico    ?? 0;
-    case "ESTUDIANTE":      return curso.precioEstudiante ?? 0;
-    default:                return 0;
+    case "AFILIADO": return curso.precioAfiliado ?? 0;
+    case "PUBLICO_GENERAL": return curso.precioPublico ?? 0;
+    case "ESTUDIANTE": return curso.precioEstudiante ?? 0;
+    default: return 0;
   }
 }
 
@@ -126,12 +127,11 @@ function MontoResumen({
             {row.label}
           </span>
           <span
-            className={`text-sm font-bold ${
-              row.color ||
-              (row.negativo  ? "text-danger-600"  :
-               row.destacado ? "text-primary-600" :
-               "text-default-700")
-            }`}
+            className={`text-sm font-bold ${row.color ||
+              (row.negativo ? "text-danger-600" :
+                row.destacado ? "text-primary-600" :
+                  "text-default-700")
+              }`}
           >
             {row.negativo ? "-" : ""}${fmt(row.valor)}
           </span>
@@ -159,32 +159,32 @@ export default function InscripcionModal({
     if (inscripcionToEdit) {
       return {
         ...inscripcionToEdit,
-        fechaPago:       inscripcionToEdit.fechaPago?.split("T")[0]       || null,
+        fechaPago: inscripcionToEdit.fechaPago?.split("T")[0] || null,
         fechaPrimerPago: inscripcionToEdit.fechaPrimerPago?.split("T")[0] || null,
       };
     }
     return {
-      cursoId:            curso?.id        || null,
-      participanteId:     participante?.id || null,
-      estadoPago:         "PENDIENTE",
+      cursoId: curso?.id || null,
+      participanteId: participante?.id || null,
+      estadoPago: "PENDIENTE",
       tipoPrecioAplicado: participante?.esAfiliado ? "AFILIADO" : "PUBLICO_GENERAL",
-      metodoPago:         participante?.esAfiliado ? "VENTA_AFILIADO" : "VENTA_PUBLICO",
-      montoEsperado:      0,
-      montoPagado:        null,
-      montoDescuento:     0,
-      montoFinal:         0,
-      tieneVale:          false,
-      codigoVale:         null,
-      fechaPago:          null,
-      notas:              "",
-      numeroPagos:        null,
-      periodicidad:       null,
-      fechaPrimerPago:    null,
+      metodoPago: participante?.esAfiliado ? "VENTA_AFILIADO" : "VENTA_PUBLICO",
+      montoEsperado: 0,
+      montoPagado: null,
+      montoDescuento: 0,
+      montoFinal: 0,
+      tieneVale: false,
+      codigoVale: null,
+      fechaPago: null,
+      notas: "",
+      numeroPagos: null,
+      periodicidad: null,
+      fechaPrimerPago: null,
     };
   });
 
-  const [cursoData,    setCursoData]    = useState<any>(curso       || null);
-  const [empresaData,  setEmpresaData]  = useState<any>(empresaProp || null);
+  const [cursoData, setCursoData] = useState<any>(curso || null);
+  const [empresaData, setEmpresaData] = useState<any>(empresaProp || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cargar curso
@@ -245,32 +245,17 @@ export default function InscripcionModal({
   // NOTA: NO incluimos form.montoDescuento aquí para evitar loop;
   // el descuento se actualiza en handleDescuentoChange directamente.
 
-  // Saldo de captación
+  // Saldo de FECAP
   const saldoInfo = useMemo(() => {
-    if (!empresaData) return null;
-    if (form.metodoPago === "CAPTACION_FEDERAL") {
-      const disponible = empresaData.saldoFederalDisponible ?? 0;
-      return {
-        tipo: "Federal",
-        disponible,
-        porAplicar:      empresaData.saldoFederalPorAplicar ?? 0,
-        aplicado:        empresaData.saldoFederalAplicado   ?? 0,
-        nuevoDisponible: Math.max(0, disponible - (form.montoFinal ?? 0)),
-        suficiente:      disponible >= (form.montoFinal ?? 0),
-      };
-    }
-    if (form.metodoPago === "CAPTACION_LOCAL") {
-      const disponible = empresaData.saldoLocalDisponible ?? 0;
-      return {
-        tipo: "Local",
-        disponible,
-        porAplicar:      empresaData.saldoLocalPorAplicar ?? 0,
-        aplicado:        empresaData.saldoLocalAplicado   ?? 0,
-        nuevoDisponible: Math.max(0, disponible - (form.montoFinal ?? 0)),
-        suficiente:      disponible >= (form.montoFinal ?? 0),
-      };
-    }
-    return null;
+    if (!empresaData || form.metodoPago !== "FECAP") return null;
+    const disponible = empresaData.saldoFecapDisponible ?? 0;
+    return {
+      disponible,
+      aplicado: empresaData.saldoFecapAplicado ?? 0,
+      porDescontar: form.montoFinal ?? 0,
+      nuevoDisponible: Math.max(0, disponible - (form.montoFinal ?? 0)),
+      suficiente: disponible >= (form.montoFinal ?? 0),
+    };
   }, [form.metodoPago, form.montoFinal, empresaData]);
 
   // Monto por pago (financiamiento)
@@ -302,7 +287,7 @@ export default function InscripcionModal({
       return false;
     }
     if (saldoInfo && !saldoInfo.suficiente) {
-      sileo.warning({ title: "Saldo insuficiente", description: `Saldo ${saldoInfo.tipo} insuficiente` });
+      sileo.warning({ title: "Saldo insuficiente", description: "Saldo FECAP insuficiente para esta inscripción" });
       return false;
     }
     if (form.metodoPago === "FINANCIAMIENTO") {
@@ -327,31 +312,31 @@ export default function InscripcionModal({
     setIsSubmitting(true);
     try {
       const payload: any = {
-        participanteId:     participante.id,
-        cursoId:            cursoData.id,
+        participanteId: participante.id,
+        cursoId: cursoData.id,
         tipoPrecioAplicado: form.tipoPrecioAplicado,
-        metodoPago:         form.metodoPago,
-        montoEsperado:      form.montoEsperado,
-        montoFinal:         form.montoFinal,
-        montoDescuento:     form.montoDescuento || 0,
-        estadoPago:         form.estadoPago,
-        notas:              form.notas || "",
+        metodoPago: form.metodoPago,
+        montoEsperado: form.montoEsperado,
+        montoFinal: form.montoFinal,
+        montoDescuento: form.montoDescuento || 0,
+        estadoPago: form.estadoPago,
+        notas: form.notas || "",
       };
 
-      if (form.montoPagado)  payload.montoPagado = form.montoPagado;
-      if (form.codigoVale)   payload.codigoVale  = form.codigoVale;
-      if (form.tieneVale)    payload.tieneVale   = true;
-      if (form.fechaPago)    payload.fechaPago   = form.fechaPago;
+      if (form.montoPagado) payload.montoPagado = form.montoPagado;
+      if (form.codigoVale) payload.codigoVale = form.codigoVale;
+      if (form.tieneVale) payload.tieneVale = true;
+      if (form.fechaPago) payload.fechaPago = form.fechaPago;
 
       if (form.metodoPago === "FINANCIAMIENTO") {
         payload.esFinanciamiento = true;
-        payload.numeroPagos      = form.numeroPagos;
-        payload.periodicidad     = form.periodicidad;
-        payload.montoPorPago     = montoPorPago;
+        payload.numeroPagos = form.numeroPagos;
+        payload.periodicidad = form.periodicidad;
+        payload.montoPorPago = montoPorPago;
         if (form.fechaPrimerPago) payload.fechaPrimerPago = form.fechaPrimerPago;
       }
 
-      if (form.metodoPago === "CAPTACION_FEDERAL" || form.metodoPago === "CAPTACION_LOCAL") {
+      if (form.metodoPago === "FECAP") {
         payload.empresaId = empresaData.id;
       }
 
@@ -423,9 +408,9 @@ export default function InscripcionModal({
             <p className="text-xs text-default-500 font-medium mb-2">Tipo de precio</p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Afiliado",        precio: cursoData.precioAfiliado,   tipo: "AFILIADO"        },
-                { label: "Público General", precio: cursoData.precioPublico,    tipo: "PUBLICO_GENERAL" },
-                { label: "Estudiante",      precio: cursoData.precioEstudiante, tipo: "ESTUDIANTE"      },
+                { label: "Afiliado", precio: cursoData.precioAfiliado, tipo: "AFILIADO" },
+                { label: "Público General", precio: cursoData.precioPublico, tipo: "PUBLICO_GENERAL" },
+                { label: "Estudiante", precio: cursoData.precioEstudiante, tipo: "ESTUDIANTE" },
               ].map(({ label, precio, tipo }) => (
                 <button
                   key={tipo}
@@ -452,6 +437,7 @@ export default function InscripcionModal({
         )}
 
         {/* Método de pago */}
+        {/* Método de pago */}
         <Select
           label="Método de pago"
           placeholder="Selecciona un método"
@@ -460,7 +446,10 @@ export default function InscripcionModal({
           startContent={<span className="text-base">{metodo?.icon}</span>}
         >
           {METODOS_PAGO
-            .filter((m) => !m.requiereEmpresa || !!participante?.empresaId)
+            .filter((m) => {
+              if (!m.requiereEmpresa) return true;
+              return !!participante?.empresaId && (empresaData?.saldoFecapDisponible ?? 0) > 0;
+            })
             .map((mp) => (
               <SelectItem key={mp.key} startContent={<span>{mp.icon}</span>}>
                 {mp.label}
@@ -497,45 +486,47 @@ export default function InscripcionModal({
             <MontoResumen
               rows={[
                 { label: "Precio del curso", valor: form.montoEsperado },
-                { label: "Total a pagar",    valor: form.montoFinal, destacado: true },
+                { label: "Total a pagar", valor: form.montoFinal, destacado: true },
               ]}
             />
           </div>
         )}
 
-        {/* CAPTACIÓN FEDERAL / LOCAL */}
-        {(form.metodoPago === "CAPTACION_FEDERAL" || form.metodoPago === "CAPTACION_LOCAL") && saldoInfo && (
+        {/* SALDO FECAP */}
+        {form.metodoPago === "FECAP" && saldoInfo && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <BuildingLibraryIcon className="w-4 h-4" />
-              Saldo captación {saldoInfo.tipo} — {empresaData?.nombre}
+              Saldo FECAP — {empresaData?.nombre}
             </h4>
 
             <Card className={`border-2 ${saldoInfo.suficiente ? "border-success-300 bg-success-50/30" : "border-danger-300 bg-danger-50/30"}`}>
               <CardBody className="py-3 px-4 space-y-3">
+
                 {/* Saldos actuales */}
-                <div className="grid grid-cols-3 gap-2">
-                  <SaldoCell label="Disponible"  valor={saldoInfo.disponible}  color="text-success-600" />
-                  <SaldoCell label="Por Aplicar" valor={saldoInfo.porAplicar}  color="text-warning-600" />
-                  <SaldoCell label="Aplicado"    valor={saldoInfo.aplicado}    color="text-default-500" />
+                <div className="grid grid-cols-2 gap-2">
+                  <SaldoCell label="Disponible" valor={saldoInfo.disponible} color="text-success-600" />
+                  <SaldoCell label="Aplicado" valor={saldoInfo.aplicado} color="text-default-500" />
                 </div>
 
                 <Divider />
 
-                {/* Impacto */}
+                {/* Impacto del cargo */}
                 <MontoResumen
                   rows={[
-                    { label: "Costo del curso",               valor: form.montoFinal },
-                    { label: "Saldo disponible tras el pago", valor: saldoInfo.nuevoDisponible,
+                    { label: "Costo del curso", valor: saldoInfo.porDescontar },
+                    {
+                      label: "Saldo disponible tras el pago", valor: saldoInfo.nuevoDisponible,
                       color: saldoInfo.suficiente ? "text-success-600" : "text-danger-600",
-                      destacado: true },
+                      destacado: true
+                    },
                   ]}
                 />
 
                 <p className={`text-xs font-semibold ${saldoInfo.suficiente ? "text-success-600" : "text-danger-600"}`}>
                   {saldoInfo.suficiente
-                    ? "✅ Saldo suficiente para cubrir el pago"
-                    : "❌ Saldo insuficiente para esta inscripción"}
+                    ? "✅ Saldo FECAP suficiente para cubrir el pago"
+                    : "❌ Saldo FECAP insuficiente para esta inscripción"}
                 </p>
               </CardBody>
             </Card>
@@ -637,9 +628,9 @@ export default function InscripcionModal({
 
             <MontoResumen
               rows={[
-                { label: "Precio del curso",   valor: form.montoEsperado                   },
-                { label: "Descuento del vale", valor: form.montoDescuento, negativo: true  },
-                { label: "Total a pagar",       valor: form.montoFinal,    destacado: true },
+                { label: "Precio del curso", valor: form.montoEsperado },
+                { label: "Descuento del vale", valor: form.montoDescuento, negativo: true },
+                { label: "Total a pagar", valor: form.montoFinal, destacado: true },
               ]}
             />
           </div>
@@ -648,6 +639,7 @@ export default function InscripcionModal({
         {/* Estado de pago y fecha */}
         <Divider />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Estado — sigue siendo Select */}
           <Select
             label="Estado de pago"
             selectedKeys={form.estadoPago ? [form.estadoPago] : []}
@@ -658,13 +650,15 @@ export default function InscripcionModal({
             ))}
           </Select>
 
+          {/* Fecha de pago — ahora con DatePicker de HeroUI */}
           {form.estadoPago === "PAGADO" && (
-            <Input
-              type="date"
+            <DatePicker
               label="Fecha de pago"
-              value={form.fechaPago || ""}
-              onChange={(e) => handleChange("fechaPago", e.target.value)}
-              max={new Date().toISOString().split("T")[0]}
+              value={form.fechaPago ? parseDate(form.fechaPago) as any : null}
+              onChange={(date) => handleChange("fechaPago", date ? date.toString() : null)}
+              maxValue={parseDate(new Date().toISOString().split("T")[0]) as any}
+              showMonthAndYearPickers
+              granularity="day"
             />
           )}
         </div>

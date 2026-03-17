@@ -37,3 +37,4 @@ build  # ✅ Por si acaso
 # Archivos del sistema
 Thumbs.db
 desktop.ini
+.env.local

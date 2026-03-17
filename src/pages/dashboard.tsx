@@ -12,6 +12,7 @@ import {
   PlusIcon,
   ArrowRightIcon,
   CalendarIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/solid";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
@@ -32,6 +33,8 @@ import GraficoBarras from "../components/dashboard/GraficosBarras";
 import GraficoPastel from "../components/dashboard/GraficoPastel";
 import CalendarioCursos from "../components/dashboard/CalendarioCursos";
 import TablaPagosPendientes from "../components/dashboard/TablaPagosPendientes";
+import GraficoFecap from "../components/dashboard/GraficoFecap";
+import GraficoHorasHombre from "../components/dashboard/GraficoHorasHombre";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -44,8 +47,11 @@ export default function Dashboard() {
     inscripcionesPorMes: [],
     distribucionCursos: [],
     cursosConEstado: [],
-    pagosPendientes: []
+    pagosPendientes: [],
+    saldoFecapPorMes: [],
+    horasHombrePorMes: [], // ← agrega
   });
+
 
   // Estados para los modales
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
@@ -328,6 +334,46 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <GraficoPastel data={dashboardData.distribucionCursos} />
+                </Card>
+              )}
+
+              {/* Gráfico FECAP — ancho completo */}
+              {dashboardData.saldoFecapPorMes.length > 0 && (
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                      <BanknotesIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Saldo FECAP por Mes
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Ingresos vs gastos de saldo FECAP
+                      </p>
+                    </div>
+                  </div>
+                  <GraficoFecap data={dashboardData.saldoFecapPorMes} />
+                </Card>
+              )}
+
+              {/* Gráfico HH por Mes */}
+              {dashboardData.horasHombrePorMes.length > 0 && (
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
+                      <ChartBarIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Horas Hombre por Mes
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        HH = duración del curso × participantes inscritos
+                      </p>
+                    </div>
+                  </div>
+                  <GraficoHorasHombre data={dashboardData.horasHombrePorMes} />
                 </Card>
               )}
 

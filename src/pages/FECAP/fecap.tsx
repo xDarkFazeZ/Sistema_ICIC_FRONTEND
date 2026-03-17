@@ -1,32 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  Card,
-  Select,
-  SelectItem,
-  Button,
-  Spinner,
-  Chip,
-  Tabs,
-  Tab,
-  Progress,
-  Input,
+  Card, Select, SelectItem, Button, Spinner,
+  Chip, Tabs, Tab, Progress, Input,
 } from "@heroui/react";
 import {
-  CloudArrowUpIcon,
-  DocumentArrowUpIcon,
-  CheckCircleIcon,
-  BuildingOfficeIcon,
-  BanknotesIcon,
-  DocumentTextIcon,
-  ArrowPathIcon,
-  ClockIcon,
-  ArrowTrendingUpIcon,
-  PencilSquareIcon,
+  CloudArrowUpIcon, DocumentArrowUpIcon, CheckCircleIcon,
+  BuildingOfficeIcon, BanknotesIcon, DocumentTextIcon,
+  ArrowPathIcon, ClockIcon, ArrowTrendingUpIcon,
+  PencilSquareIcon, PlusIcon,
 } from "@heroicons/react/24/solid";
 import * as XLSX from "xlsx";
 import { sileo } from "sileo";
 import Sidebar from "../../components/common/Sidebar";
 import { fecapService } from "../../services/fecapService";
+import EmpresaModal from "../../components/modals/Empresa/empresaModal";
+import { useEmpresaModal } from "../../components/modals/Empresa/EmpresaModalContext";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -95,12 +83,19 @@ const tipoLabel: Record<string, string> = {
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export default function Fecap() {
+  const { setOrigen } = useEmpresaModal();
+
   // ── Compartido ──
   const [empresas, setEmpresas] = useState<EmpresaSaldo[]>([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
 
+  // ── Modal empresa ──
+  const [modalEmpresaAbierto, setModalEmpresaAbierto] = useState(false);
+
   // ── Tab Carga ──
   const [empresaCarga, setEmpresaCarga] = useState<EmpresaSaldo | null>(null);
+  // Clave para forzar re-render del Select cuando se autoselecciona
+  const [selectKey, setSelectKey] = useState(0);
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [archivoNombre, setArchivoNombre] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -109,6 +104,7 @@ export default function Fecap() {
   const [progreso, setProgreso] = useState(0);
   const [cargaExitosa, setCargaExitosa] = useState(false);
   const [concepto, setConcepto] = useState("");
+  const [saldoNuevoReal, setSaldoNuevoReal] = useState<number | null>(null);
 
   // ── Tab Historial ──
   const [empresaHistorial, setEmpresaHistorial] = useState<EmpresaSaldo | null>(null);
@@ -137,6 +133,35 @@ export default function Fecap() {
       .catch(() => sileo.error({ title: "Error", description: "No se pudo cargar el historial" }))
       .finally(() => setLoadingHistorial(false));
   }, [empresaHistorial, paginaHistorial]);
+
+  // ── Abrir modal empresa desde FECAP ──
+  const handleAbrirModalEmpresa = () => {
+    setOrigen("fecap"); // ← context indica origen
+    setModalEmpresaAbierto(true);
+  };
+
+  // ── Empresa creada desde modal — autoseleccionar ──
+  const handleEmpresaCreada = async (empresaCreada: { id: number; nombre: string; rfc: string; direccion: string }) => {
+    setModalEmpresaAbierto(false);
+    // Refrescar lista de empresas desde BD
+    const empresasActualizadas = await fecapService.getEmpresasConSaldo();
+    setEmpresas(empresasActualizadas);
+    // Autoseleccionar la empresa recién creada
+    const nuevaEmpresa = empresasActualizadas.find((e: EmpresaSaldo) => e.id === empresaCreada.id);
+    if (nuevaEmpresa) {
+      setEmpresaCarga(nuevaEmpresa);
+      setSelectKey((k) => k + 1); // fuerza re-render del Select
+      setFacturas([]);
+      setArchivoNombre("");
+      setCargaExitosa(false);
+      setProgreso(0);
+      setConcepto("");
+      sileo.success({
+        title: "Empresa lista",
+        description: `${nuevaEmpresa.nombre} fue seleccionada automáticamente`,
+      });
+    }
+  };
 
   // ── Seleccionar empresa en tab carga ──
   const handleEmpresaCargaChange = (keys: any) => {
@@ -209,7 +234,7 @@ export default function Fecap() {
             const d = new Date(año, mes, dia);
             if (!isNaN(d.getTime()))
               fechaStr = d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-          } catch {}
+          } catch { }
 
           const factura: Factura = {
             numero: get("No. Factura")?.toString().trim() || "—",
@@ -242,52 +267,53 @@ export default function Fecap() {
   }, [leerExcel]);
 
   // ── Totales ──
-  const totalAFavor    = facturas.reduce((s, f) => s + f.aFavor, 0);
+  const totalAFavor = facturas.reduce((s, f) => s + f.aFavor, 0);
   const totalRetencion = facturas.reduce((s, f) => s + f.retencion, 0);
-  const saldoActual    = empresaCarga?.saldoFecapDisponible ?? 0;
-  const saldoNuevo     = saldoActual + totalAFavor;
+  const saldoActual = empresaCarga?.saldoFecapDisponible ?? 0;
+  const saldoNuevo = saldoActual + totalAFavor;
 
-  // ── Confirmar carga con progress animado ──
-const handleConfirmar = async () => {
-  if (!empresaCarga || totalAFavor <= 0) return;
-  setConfirmando(true);
-  setProgreso(0);
-
-  const intervalo = setInterval(() => {
-    setProgreso((prev) => {
-      if (prev >= 85) { clearInterval(intervalo); return prev; }
-      return prev + 15;
-    });
-  }, 200);
-
-  try {
-    await fecapService.cargarSaldo(empresaCarga.id, totalAFavor, concepto);
-    clearInterval(intervalo);
-    setProgreso(100);
-
-    // ✅ Refresca desde la BD en lugar de calcular localmente
-    const empresasActualizadas = await fecapService.getEmpresasConSaldo();
-    setEmpresas(empresasActualizadas);
-    const empresaActualizada = empresasActualizadas.find(
-      (e: EmpresaSaldo) => e.id === empresaCarga.id
-    );
-    if (empresaActualizada) setEmpresaCarga(empresaActualizada);
-
-    setTimeout(() => {
-      setCargaExitosa(true);
-      sileo.success({
-        title: "Saldo cargado exitosamente",
-        description: `Se agregaron ${formatCurrency(totalAFavor)} a ${empresaCarga.nombre}`,
-      });
-    }, 400);
-  } catch {
-    clearInterval(intervalo);
+  // ── Confirmar carga ──
+  const handleConfirmar = async () => {
+    if (!empresaCarga || totalAFavor <= 0) return;
+    setConfirmando(true);
     setProgreso(0);
-    sileo.error({ title: "Error", description: "No se pudo cargar el saldo. Intenta de nuevo." });
-  } finally {
-    setConfirmando(false);
-  }
-};
+
+    const intervalo = setInterval(() => {
+      setProgreso((prev) => {
+        if (prev >= 85) { clearInterval(intervalo); return prev; }
+        return prev + 15;
+      });
+    }, 200);
+
+    try {
+      await fecapService.cargarSaldo(empresaCarga.id, totalAFavor, concepto);
+      clearInterval(intervalo);
+      setProgreso(100);
+
+      const empresasActualizadas = await fecapService.getEmpresasConSaldo();
+      setEmpresas(empresasActualizadas);
+      const empresaActualizada = empresasActualizadas.find(
+        (e: EmpresaSaldo) => e.id === empresaCarga.id
+      );
+      if (empresaActualizada) {
+        setEmpresaCarga(empresaActualizada);
+        setSaldoNuevoReal(empresaActualizada.saldoFecapDisponible);
+      }
+      setTimeout(() => {
+        setCargaExitosa(true);
+        sileo.success({
+          title: "Saldo cargado exitosamente",
+          description: `Se agregaron ${formatCurrency(totalAFavor)} a ${empresaCarga.nombre}`,
+        });
+      }, 400);
+    } catch {
+      clearInterval(intervalo);
+      setProgreso(0);
+      sileo.error({ title: "Error", description: "No se pudo cargar el saldo. Intenta de nuevo." });
+    } finally {
+      setConfirmando(false);
+    }
+  };
 
   const handleNuevaCarga = () => {
     setFacturas([]);
@@ -295,6 +321,7 @@ const handleConfirmar = async () => {
     setCargaExitosa(false);
     setProgreso(0);
     setConcepto("");
+    setSaldoNuevoReal(null); // ← agrega esto
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -339,9 +366,21 @@ const handleConfirmar = async () => {
 
                 {/* PASO 1 — Empresa */}
                 <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold">1</div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar empresa</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar empresa</h2>
+                    </div>
+                    {/* Botón nueva empresa */}
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      startContent={<PlusIcon className="w-4 h-4" />}
+                      onPress={handleAbrirModalEmpresa}
+                    >
+                      Nueva empresa
+                    </Button>
                   </div>
 
                   {loadingEmpresas ? (
@@ -351,9 +390,12 @@ const handleConfirmar = async () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* key={selectKey} fuerza re-render para mostrar empresa autoseleccionada */}
                       <Select
+                        key={selectKey}
                         label="Empresa"
                         placeholder="Selecciona una empresa"
+                        selectedKeys={empresaCarga ? new Set([String(empresaCarga.id)]) : new Set()}
                         onSelectionChange={handleEmpresaCargaChange}
                         classNames={{ trigger: "bg-gray-50 dark:bg-gray-800" }}
                       >
@@ -446,7 +488,6 @@ const handleConfirmar = async () => {
                       <Chip color="danger" variant="flat" size="sm">{facturas.length} facturas</Chip>
                     </div>
 
-                    {/* Tabla con scroll */}
                     <div className="overflow-x-auto max-h-96 overflow-y-auto">
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
@@ -473,7 +514,6 @@ const handleConfirmar = async () => {
                       </table>
                     </div>
 
-                    {/* Resumen + Confirmar */}
                     <div className="p-6 border-t border-gray-100 dark:border-gray-800 space-y-6">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Resumen de carga</h3>
 
@@ -496,7 +536,6 @@ const handleConfirmar = async () => {
                         </div>
                       </div>
 
-                      {/* Saldo nuevo destacado */}
                       <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 text-white">
                         <div className="flex items-center gap-3">
                           <BanknotesIcon className="w-8 h-8 opacity-80" />
@@ -511,7 +550,6 @@ const handleConfirmar = async () => {
                         </div>
                       </div>
 
-                      {/* Input descripción */}
                       <Input
                         label="Descripción del movimiento"
                         placeholder="Ej: Retenciones 2do semestre 2024 — obra Libramiento Norte"
@@ -523,12 +561,9 @@ const handleConfirmar = async () => {
                           input: "text-sm",
                           inputWrapper: "border-gray-200 dark:border-gray-700",
                         }}
-                        startContent={
-                          <PencilSquareIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        }
+                        startContent={<PencilSquareIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
                       />
 
-                      {/* Progress bar */}
                       {(confirmando || progreso > 0) && (
                         <div className="space-y-2">
                           <div className="flex justify-between text-xs text-gray-500">
@@ -544,16 +579,11 @@ const handleConfirmar = async () => {
                         </div>
                       )}
 
-                      {/* Botón confirmar */}
                       <Button
                         color="danger"
                         size="lg"
                         className="w-full font-bold text-base"
-                        startContent={
-                          confirmando
-                            ? <Spinner size="sm" color="white" />
-                            : <CheckCircleIcon className="w-5 h-5" />
-                        }
+                        startContent={confirmando ? <Spinner size="sm" color="white" /> : <CheckCircleIcon className="w-5 h-5" />}
                         onPress={handleConfirmar}
                         isDisabled={confirmando || totalAFavor <= 0}
                       >
@@ -577,8 +607,7 @@ const handleConfirmar = async () => {
                           <span className="font-bold">{empresaCarga?.nombre}</span>
                         </p>
                         <p className="text-gray-500 mt-1">
-                          Nuevo saldo: <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(saldoNuevo)}</span>
-                        </p>
+                          Nuevo saldo: <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(saldoNuevoReal ?? saldoNuevo)}</span>                        </p>
                         {concepto && (
                           <p className="text-xs text-gray-400 mt-2 italic">"{concepto}"</p>
                         )}
@@ -606,8 +635,6 @@ const handleConfirmar = async () => {
               }
             >
               <div className="pt-6 space-y-6">
-
-                {/* Selector empresa historial */}
                 <Card className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {loadingEmpresas ? (
@@ -650,7 +677,6 @@ const handleConfirmar = async () => {
                   </div>
                 </Card>
 
-                {/* Timeline */}
                 {empresaHistorial && (
                   <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                     <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
@@ -679,13 +705,11 @@ const handleConfirmar = async () => {
                       <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {movimientos.map((mov) => (
                           <div key={mov.id} className="flex items-start gap-4 p-5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                            <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${
-                              mov.tipoMovimiento === "CARGA_INICIAL"    ? "bg-green-500" :
-                              mov.tipoMovimiento === "APLICACION_CURSO" ? "bg-red-500"   :
-                              mov.tipoMovimiento === "REVERSION"        ? "bg-yellow-500" :
-                              "bg-gray-400"
-                            }`} />
-
+                            <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${mov.tipoMovimiento === "CARGA_INICIAL" ? "bg-green-500" :
+                                mov.tipoMovimiento === "APLICACION_CURSO" ? "bg-red-500" :
+                                  mov.tipoMovimiento === "REVERSION" ? "bg-yellow-500" :
+                                    "bg-gray-400"
+                              }`} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -696,22 +720,14 @@ const handleConfirmar = async () => {
                                     <span className="text-xs text-gray-500">· {mov.inscripcion.curso.nombre}</span>
                                   )}
                                 </div>
-                                <span className={`font-bold text-lg whitespace-nowrap ${
-                                  mov.monto >= 0
-                                    ? "text-green-600 dark:text-green-400"
-                                    : "text-red-600 dark:text-red-400"
-                                }`}>
+                                <span className={`font-bold text-lg whitespace-nowrap ${mov.monto >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                                  }`}>
                                   {mov.monto >= 0 ? "+" : ""}{formatCurrency(mov.monto)}
                                 </span>
                               </div>
-
-                              {/* Concepto / descripción */}
                               {mov.concepto && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 italic">
-                                  "{mov.concepto}"
-                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 italic">"{mov.concepto}"</p>
                               )}
-
                               <div className="flex items-center gap-4 mt-2 flex-wrap">
                                 <span className="text-xs text-gray-400 flex items-center gap-1">
                                   <ClockIcon className="w-3 h-3" />
@@ -730,7 +746,6 @@ const handleConfirmar = async () => {
                       </div>
                     )}
 
-                    {/* Paginación */}
                     {totalMovimientos > 20 && (
                       <div className="flex items-center justify-between p-4 border-t border-gray-100 dark:border-gray-800">
                         <Button size="sm" variant="flat" color="danger"
@@ -755,6 +770,13 @@ const handleConfirmar = async () => {
           </Tabs>
         </div>
       </main>
+
+      {/* Modal empresa */}
+      <EmpresaModal
+        isOpen={modalEmpresaAbierto}
+        onClose={() => setModalEmpresaAbierto(false)}
+        onSuccess={handleEmpresaCreada}
+      />
     </div>
   );
 }

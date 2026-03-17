@@ -1,21 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  Input,
-  Button,
-  Autocomplete,
-  AutocompleteItem,
-  Switch,
-  Chip,
-  Avatar,
-  Spinner,
-  Card,
-  CardBody,
-  Divider,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Input, Button, Autocomplete, AutocompleteItem,
+  Switch, Chip, Avatar, Spinner, Card, CardBody,
+  Divider, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from "@heroui/react";
 import { DatePicker } from "@heroui/react";
 import { CalendarDate, parseDate } from "@internationalized/date";
@@ -23,24 +10,17 @@ import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 import InscripcionModal from "../Inscripcion/inscripcionModal";
 import EmpresaModal from "../../modals/Empresa/empresaModal";
-
+import { useEmpresaModal } from "../../modals/Empresa/EmpresaModalContext";
 import { buscarEmpresas, obtenerEmpresa } from "../../../services/empresaService";
 import { listarCursos, obtenerCursoPorId } from "../../../services/cursoService";
 import { crearParticipante, actualizarParticipante } from "../../../services/participanteService";
 import {
-  MagnifyingGlassIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  PlusCircleIcon,
-  CurrencyDollarIcon,
-  UserIcon,
-  ExclamationTriangleIcon as ExclamationOutline,
-  ArrowPathIcon,
-  BookOpenIcon,
+  MagnifyingGlassIcon, ClockIcon, CheckCircleIcon, PlusCircleIcon,
+  CurrencyDollarIcon, UserIcon, ExclamationTriangleIcon as ExclamationOutline,
+  ArrowPathIcon, BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import {
-  ExclamationTriangleIcon,
-  CheckCircleIcon as CheckCircleSolid,
+  ExclamationTriangleIcon, CheckCircleIcon as CheckCircleSolid,
 } from "@heroicons/react/24/solid";
 
 const C = { accentSolid: "#4f46e5" };
@@ -170,35 +150,21 @@ function ModeCard({ active, color = "danger", icon, label, description, onPress 
 
 // ── Modal de duplicado ────────────────────────────────────────────────────────
 function DuplicadoModal({
-  isOpen,
-  participante,
-  cursoSeleccionado,
-  onUsarExistente,
-  onCrearNuevo,
-  onCancel,
-  isLoading,
+  isOpen, participante, cursoSeleccionado,
+  onUsarExistente, onCrearNuevo, onCancel, isLoading,
 }: {
-  isOpen: boolean;
-  participante: any;
-  cursoSeleccionado: any | null;
-  onUsarExistente: () => void;
-  onCrearNuevo: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
+  isOpen: boolean; participante: any; cursoSeleccionado: any | null;
+  onUsarExistente: () => void; onCrearNuevo: () => void;
+  onCancel: () => void; isLoading: boolean;
 }) {
   if (!participante) return null;
 
   const nombreCompleto = [participante.nombre, participante.apellidoPaterno, participante.apellidoMaterno]
     .filter(Boolean).join(" ");
-
   const cursosAnteriores: any[] = participante.inscripciones ?? [];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onCancel}
-      size="md"
-      backdrop="blur"
+    <Modal isOpen={isOpen} onClose={onCancel} size="md" backdrop="blur"
       classNames={{
         base: "border border-warning-200",
         header: "bg-warning-50 dark:bg-warning-900/20 border-b border-warning-200",
@@ -213,13 +179,10 @@ function DuplicadoModal({
             </span>
           </div>
         </ModalHeader>
-
         <ModalBody className="py-5 space-y-4">
           <p className="text-sm text-default-600">
             Encontramos un participante con datos similares. ¿Qué deseas hacer?
           </p>
-
-          {/* Tarjeta del participante encontrado */}
           <div className="rounded-xl border border-default-200 bg-default-50 dark:bg-default-800/40 p-4 space-y-3">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
@@ -228,23 +191,13 @@ function DuplicadoModal({
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-default-800 text-sm">{nombreCompleto}</p>
                 <div className="mt-1 space-y-0.5">
-                  {participante.correo && (
-                    <p className="text-xs text-default-500">{participante.correo}</p>
-                  )}
-                  {participante.celular && (
-                    <p className="text-xs text-default-500">Tel: {participante.celular}</p>
-                  )}
-                  {participante.empresa && (
-                    <p className="text-xs text-default-500">Empresa: {participante.empresa.nombre}</p>
-                  )}
+                  {participante.correo && <p className="text-xs text-default-500">{participante.correo}</p>}
+                  {participante.celular && <p className="text-xs text-default-500">Tel: {participante.celular}</p>}
+                  {participante.empresa && <p className="text-xs text-default-500">Empresa: {participante.empresa.nombre}</p>}
                 </div>
               </div>
-              {participante.esAfiliado && (
-                <Chip size="sm" color="warning" variant="flat">Afiliado</Chip>
-              )}
+              {participante.esAfiliado && <Chip size="sm" color="warning" variant="flat">Afiliado</Chip>}
             </div>
-
-            {/* Cursos anteriores */}
             {cursosAnteriores.length > 0 && (
               <div className="pt-2 border-t border-default-200">
                 <p className="text-[11px] font-semibold text-default-500 mb-2 flex items-center gap-1">
@@ -255,12 +208,9 @@ function DuplicadoModal({
                   {cursosAnteriores.map((ins: any) => (
                     <div key={ins.id} className="flex items-center justify-between text-xs px-2 py-1 rounded-lg bg-white dark:bg-default-700 border border-default-100">
                       <span className="text-default-700 font-medium truncate">{ins.curso?.nombre ?? "—"}</span>
-                      <Chip
-                        size="sm"
-                        variant="flat"
+                      <Chip size="sm" variant="flat"
                         color={ins.estadoPago === "PAGADO" ? "success" : ins.estadoPago === "CANCELADO" ? "danger" : "warning"}
-                        className="ml-2 flex-shrink-0"
-                      >
+                        className="ml-2 flex-shrink-0">
                         {ins.estadoPago}
                       </Chip>
                     </div>
@@ -270,58 +220,41 @@ function DuplicadoModal({
             )}
           </div>
 
-          {/* Aviso si ya está inscrito en el mismo curso */}
           {cursoSeleccionado && cursosAnteriores.some((i: any) => i.cursoId === cursoSeleccionado.id) && (
             <div className="flex items-start gap-2 rounded-xl bg-danger-50 border border-danger-200 p-3">
               <ExclamationOutline className="w-4 h-4 text-danger-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-danger-700 font-medium">
                 Este participante ya está inscrito en <strong>{cursoSeleccionado.nombre}</strong>.
-                Si usas el existente, se abrirá el modal de inscripción y Prisma usará{" "}
-                <code className="bg-danger-100 px-1 rounded">upsert</code>, por lo que no se duplicará.
               </p>
             </div>
           )}
 
-          {/* Opciones */}
           <div className="grid grid-cols-1 gap-2 pt-1">
-            <button
-              onClick={onUsarExistente}
-              disabled={isLoading}
-              className="flex items-center gap-3 p-3 rounded-xl border-2 border-success-300 bg-success-50 hover:bg-success-100 dark:bg-success-900/20 transition-all text-left group"
-            >
+            <button onClick={onUsarExistente} disabled={isLoading}
+              className="flex items-center gap-3 p-3 rounded-xl border-2 border-success-300 bg-success-50 hover:bg-success-100 dark:bg-success-900/20 transition-all text-left group">
               <div className="p-1.5 bg-success-100 dark:bg-success-900/40 rounded-full group-hover:scale-110 transition-transform">
                 <CheckCircleSolid className="w-5 h-5 text-success-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-success-700 dark:text-success-300">
-                  Usar el participante existente
-                </p>
+                <p className="text-sm font-semibold text-success-700 dark:text-success-300">Usar el participante existente</p>
                 <p className="text-xs text-success-600 dark:text-success-400">
                   Conserva su historial y {cursoSeleccionado ? "continúa a la inscripción" : "lo selecciona directamente"}
                 </p>
               </div>
             </button>
 
-            <button
-              onClick={onCrearNuevo}
-              disabled={isLoading}
-              className="flex items-center gap-3 p-3 rounded-xl border-2 border-default-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all text-left group"
-            >
+            <button onClick={onCrearNuevo} disabled={isLoading}
+              className="flex items-center gap-3 p-3 rounded-xl border-2 border-default-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all text-left group">
               <div className="p-1.5 bg-default-100 dark:bg-default-800 rounded-full group-hover:scale-110 transition-transform">
                 <ArrowPathIcon className="w-5 h-5 text-default-500 group-hover:text-indigo-500" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-default-700 group-hover:text-indigo-700">
-                  Crear de todas formas
-                </p>
-                <p className="text-xs text-default-500">
-                  Son personas distintas con datos similares
-                </p>
+                <p className="text-sm font-semibold text-default-700 group-hover:text-indigo-700">Crear de todas formas</p>
+                <p className="text-xs text-default-500">Son personas distintas con datos similares</p>
               </div>
             </button>
           </div>
         </ModalBody>
-
         <ModalFooter className="border-t border-default-200 pt-3">
           <Button variant="light" size="sm" onPress={onCancel} isDisabled={isLoading}>
             Volver al formulario
@@ -343,27 +276,21 @@ interface ParticipanteModalProps {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ParticipanteModal({
-  isOpen,
-  onClose,
-  onSuccess,
-  participanteToEdit,
-  cursoIdParaAsignar,
+  isOpen, onClose, onSuccess, participanteToEdit, cursoIdParaAsignar,
 }: ParticipanteModalProps) {
+  const { setOrigen } = useEmpresaModal();
+
   const [form, setForm] = useState<Record<string, any>>({ esAfiliado: false });
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  // ── NUEVO: estado para duplicado detectado ────────────────────
   const [duplicadoDetectado, setDuplicadoDetectado] = useState<any | null>(null);
 
-  // Modales anidados
   const [inscripcionModalOpen, setInscripcionModalOpen] = useState(false);
   const [inscripcionData, setInscripcionData] = useState<any>(null);
   const [empresaModalOpen, setEmpresaModalOpen] = useState(false);
 
-  // Empresa
   const [empresaMode, setEmpresaMode] = useState<EmpresaMode>(null);
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
@@ -372,7 +299,6 @@ export default function ParticipanteModal({
   const [empresaCompleta, setEmpresaCompleta] = useState<any | null>(null);
   const [empresaCreada, setEmpresaCreada] = useState<any | null>(null);
 
-  // Curso
   const [cursoMode, setCursoMode] = useState<CursoMode>(null);
   const [cursos, setCursos] = useState<any[]>([]);
   const [loadingCursos, setLoadingCursos] = useState(false);
@@ -381,7 +307,6 @@ export default function ParticipanteModal({
 
   const timeouts = useRef<Record<string, any>>({});
 
-  // ── Reset ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
       setForm({ esAfiliado: false });
@@ -394,7 +319,6 @@ export default function ParticipanteModal({
       setEmpresaModalOpen(false);
       return;
     }
-
     if (participanteToEdit) {
       setForm({
         ...participanteToEdit,
@@ -415,7 +339,6 @@ export default function ParticipanteModal({
       }
       return;
     }
-
     if (cursoIdParaAsignar) {
       setCursoMode("buscar");
       obtenerCursoPorId(cursoIdParaAsignar).then(curso => {
@@ -501,7 +424,6 @@ export default function ParticipanteModal({
     return Object.keys(e).length === 0;
   };
 
-  // ── Construir payload (reutilizable) ──────────────────────────
   const buildPayload = (extras: Record<string, any> = {}) => {
     const payload: Record<string, any> = { esAfiliado: form.esAfiliado ?? false, ...extras };
     const campos = ["nombre", "apellidoPaterno", "apellidoMaterno", "fechaNacimiento",
@@ -514,7 +436,6 @@ export default function ParticipanteModal({
     return payload;
   };
 
-  // ── Lógica común tras crear/reutilizar participante ───────────
   const afterParticipante = (participante: any) => {
     if (cursoMode === "buscar" && cursoSeleccionado) {
       setInscripcionData({ participante, curso: cursoSeleccionado });
@@ -525,7 +446,6 @@ export default function ParticipanteModal({
     }
   };
 
-  // ── Submit principal ──────────────────────────────────────────
   const handleSubmit = async () => {
     if (empresaMode === "crear" && !empresaCreada) {
       sileo.warning({ title: "Empresa sin crear", description: 'Haz clic en "Crear empresa" antes de guardar.' });
@@ -535,10 +455,8 @@ export default function ParticipanteModal({
       sileo.warning({ title: "Campos con errores", description: "Revisa los campos marcados antes de continuar." });
       return;
     }
-
     setSubmitError(null);
     setIsSubmitting(true);
-
     try {
       if (participanteToEdit) {
         const response = await actualizarParticipante(participanteToEdit.id, buildPayload());
@@ -553,13 +471,10 @@ export default function ParticipanteModal({
     } catch (err: any) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-
-      // ── DUPLICADO DETECTADO ──────────────────────────────────
       if (status === 409 && data?.code === "PARTICIPANTE_DUPLICADO") {
-        setDuplicadoDetectado(data.data); // abre el modal de decisión, sin mostrar error
+        setDuplicadoDetectado(data.data);
         return;
       }
-
       const msg = data?.message ?? data?.error ?? data ?? err?.message ?? "Error desconocido";
       setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg, null, 2));
       sileo.error({ title: "Error al registrar", description: "Revisa los datos e inténtalo de nuevo." });
@@ -568,18 +483,13 @@ export default function ParticipanteModal({
     }
   };
 
-  // ── Opción A: usar el participante que ya existe ──────────────
   const handleUsarExistente = () => {
     const p = duplicadoDetectado;
     setDuplicadoDetectado(null);
-    sileo.success({
-      title: "Participante seleccionado",
-      description: `${p.nombre} ${p.apellidoPaterno} fue seleccionado.`,
-    });
+    sileo.success({ title: "Participante seleccionado", description: `${p.nombre} ${p.apellidoPaterno} fue seleccionado.` });
     afterParticipante(p);
   };
 
-  // ── Opción B: forzar creación de uno nuevo ────────────────────
   const handleForzarCreacion = async () => {
     setDuplicadoDetectado(null);
     setIsSubmitting(true);
@@ -596,7 +506,6 @@ export default function ParticipanteModal({
     }
   };
 
-  // ── Progreso ──────────────────────────────────────────────────
   const filled = REQUIRED_FIELDS.filter(f => form[f] != null && form[f] !== "").length;
   const extraRequired = form.esAfiliado ? 1 : 0;
   const extraFilled = form.esAfiliado && form.empresaId ? 1 : 0;
@@ -702,7 +611,6 @@ export default function ParticipanteModal({
               <Input {...inp("apellidoPaterno", "Apellido Paterno", true)} value={form.apellidoPaterno ?? ""}
                 endContent={<FieldOk ok={!!form.apellidoPaterno && !errors.apellidoPaterno} />} />
               <Input {...inp("apellidoMaterno", "Apellido Materno")} value={form.apellidoMaterno ?? ""} />
-
               <DatePicker
                 label={<RequiredLabel label="Fecha de Nacimiento" required />}
                 size="sm" variant="bordered" radius="lg"
@@ -718,13 +626,11 @@ export default function ParticipanteModal({
                 classNames={{ ...inputCN, selectorButton: "text-danger" }}
                 maxValue={parseDate(new Date().toISOString().split("T")[0])}
               />
-
               <Input {...inp("celular", "Celular")} value={form.celular ?? ""} maxLength={10} type="tel"
                 description="10 dígitos" endContent={form.celular && !errors.celular ? <FieldOk ok /> : null} />
               <Input {...inp("correo", "Correo electrónico")} value={form.correo ?? ""} type="email"
                 endContent={form.correo && !errors.correo ? <FieldOk ok /> : null} />
             </div>
-
             <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50/80 to-blue-50/60 border border-indigo-100/60">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white">
@@ -798,8 +704,9 @@ export default function ParticipanteModal({
                   <div className="flex-1">
                     <p className="text-sm font-medium">{empresaCompleta.nombre}</p>
                     <div className="flex gap-4 mt-1 text-xs">
-                      <span className="text-primary-600">Federal: ${empresaCompleta.saldoFederalDisponible?.toFixed(2)}</span>
-                      <span className="text-primary-600">Local: ${empresaCompleta.saldoLocalDisponible?.toFixed(2)}</span>
+                      <span className="text-primary-600">
+                        Saldo FECAP: ${empresaCompleta.saldoFecapDisponible?.toFixed(2) ?? "0.00"}
+                      </span>
                     </div>
                   </div>
                 </CardBody>
@@ -819,6 +726,7 @@ export default function ParticipanteModal({
                 label="Asignar después" description="Pendiente"
                 onPress={() => handleEmpresaMode("despues")} />
             </div>
+
             {empresaMode === "buscar" && (
               <div className="mt-3">
                 {empresaSeleccionada && form.empresaId ? (
@@ -872,6 +780,7 @@ export default function ParticipanteModal({
                 )}
               </div>
             )}
+
             {empresaMode === "crear" && (
               <div className="mt-3">
                 {empresaCreada ? (
@@ -896,13 +805,18 @@ export default function ParticipanteModal({
                     </p>
                     <Button color="success" variant="flat" size="sm"
                       startContent={<PlusCircleIcon className="w-4 h-4" />}
-                      onPress={() => setEmpresaModalOpen(true)} className="w-full font-semibold">
+                      onPress={() => {
+                        setOrigen("participante"); // ← context cambia el texto del modal
+                        setEmpresaModalOpen(true);
+                      }}
+                      className="w-full font-semibold">
                       Crear nueva empresa
                     </Button>
                   </div>
                 )}
               </div>
             )}
+
             {empresaMode === "despues" && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
@@ -933,6 +847,7 @@ export default function ParticipanteModal({
                 label="Inscribir después" description="Pendiente"
                 onPress={() => handleCursoMode("despues")} />
             </div>
+
             {cursoMode === "buscar" && (
               <div className="mt-3">
                 {cursoSeleccionado && form.cursoId ? (
@@ -972,17 +887,15 @@ export default function ParticipanteModal({
                         <div className="py-0.5">
                           <p className="text-sm font-semibold text-slate-700">{curso.nombre}</p>
                           <div className="flex items-center gap-3 mt-0.5">
-                            {/* Fechas */}
-        <p className="text-[11px] text-slate-400">
-          {new Date(curso.fechaInicio).toLocaleDateString("es-MX", {
-            day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
-          })}
-          {" → "}
-          {new Date(curso.fechaFin).toLocaleDateString("es-MX", {
-            day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
-          })}
-        </p>
-                            {/* Instructor si existe */}
+                            <p className="text-[11px] text-slate-400">
+                              {new Date(curso.fechaInicio).toLocaleDateString("es-MX", {
+                                day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
+                              })}
+                              {" → "}
+                              {new Date(curso.fechaFin).toLocaleDateString("es-MX", {
+                                day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
+                              })}
+                            </p>
                             {curso.instructor && (
                               <p className="text-[11px] text-slate-400">
                                 · {curso.instructor.nombre} {curso.instructor.apellidoPaterno}
@@ -996,6 +909,7 @@ export default function ParticipanteModal({
                 )}
               </div>
             )}
+
             {cursoMode === "despues" && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
@@ -1011,7 +925,7 @@ export default function ParticipanteModal({
         </div>
       </ModalForm>
 
-      {/* ── Modal: Duplicado detectado ── */}
+      {/* Modal: Duplicado */}
       <DuplicadoModal
         isOpen={!!duplicadoDetectado}
         participante={duplicadoDetectado}
@@ -1022,14 +936,14 @@ export default function ParticipanteModal({
         isLoading={isSubmitting}
       />
 
-      {/* ── Modal: Crear empresa ── */}
+      {/* Modal: Crear empresa */}
       <EmpresaModal
         isOpen={empresaModalOpen}
         onClose={() => setEmpresaModalOpen(false)}
         onSuccess={handleEmpresaCreada}
       />
 
-      {/* ── Modal: Inscripción ── */}
+      {/* Modal: Inscripción */}
       {inscripcionData && (
         <InscripcionModal
           isOpen={inscripcionModalOpen}
