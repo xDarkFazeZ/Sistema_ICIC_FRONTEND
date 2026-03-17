@@ -9,6 +9,7 @@ import {
   Tabs,
   Tab,
   Progress,
+  Input,
 } from "@heroui/react";
 import {
   CloudArrowUpIcon,
@@ -20,6 +21,7 @@ import {
   ArrowPathIcon,
   ClockIcon,
   ArrowTrendingUpIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/solid";
 import * as XLSX from "xlsx";
 import { sileo } from "sileo";
@@ -106,6 +108,7 @@ export default function Fecap() {
   const [confirmando, setConfirmando] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const [cargaExitosa, setCargaExitosa] = useState(false);
+  const [concepto, setConcepto] = useState("");
 
   // ── Tab Historial ──
   const [empresaHistorial, setEmpresaHistorial] = useState<EmpresaSaldo | null>(null);
@@ -144,6 +147,7 @@ export default function Fecap() {
     setArchivoNombre("");
     setCargaExitosa(false);
     setProgreso(0);
+    setConcepto("");
   };
 
   // ── Seleccionar empresa en tab historial ──
@@ -244,57 +248,56 @@ export default function Fecap() {
   const saldoNuevo     = saldoActual + totalAFavor;
 
   // ── Confirmar carga con progress animado ──
-  const handleConfirmar = async () => {
-    if (!empresaCarga || totalAFavor <= 0) return;
-    setConfirmando(true);
-    setProgreso(0);
+const handleConfirmar = async () => {
+  if (!empresaCarga || totalAFavor <= 0) return;
+  setConfirmando(true);
+  setProgreso(0);
 
-    // Simular progreso mientras se guarda
-    const intervalo = setInterval(() => {
-      setProgreso((prev) => {
-        if (prev >= 85) { clearInterval(intervalo); return prev; }
-        return prev + 15;
+  const intervalo = setInterval(() => {
+    setProgreso((prev) => {
+      if (prev >= 85) { clearInterval(intervalo); return prev; }
+      return prev + 15;
+    });
+  }, 200);
+
+  try {
+    await fecapService.cargarSaldo(empresaCarga.id, totalAFavor, concepto);
+    clearInterval(intervalo);
+    setProgreso(100);
+
+    // ✅ Refresca desde la BD en lugar de calcular localmente
+    const empresasActualizadas = await fecapService.getEmpresasConSaldo();
+    setEmpresas(empresasActualizadas);
+    const empresaActualizada = empresasActualizadas.find(
+      (e: EmpresaSaldo) => e.id === empresaCarga.id
+    );
+    if (empresaActualizada) setEmpresaCarga(empresaActualizada);
+
+    setTimeout(() => {
+      setCargaExitosa(true);
+      sileo.success({
+        title: "Saldo cargado exitosamente",
+        description: `Se agregaron ${formatCurrency(totalAFavor)} a ${empresaCarga.nombre}`,
       });
-    }, 200);
-
-    try {
-      await fecapService.cargarSaldo(empresaCarga.id, totalAFavor);
-      clearInterval(intervalo);
-      setProgreso(100);
-
-      // Actualizar saldo local en la lista
-      setEmpresas((prev) =>
-        prev.map((e) =>
-          e.id === empresaCarga.id ? { ...e, saldoFecapDisponible: saldoNuevo } : e
-        )
-      );
-      setEmpresaCarga((prev) => prev ? { ...prev, saldoFecapDisponible: saldoNuevo } : prev);
-
-      setTimeout(() => {
-        setCargaExitosa(true);
-        sileo.success({
-          title: "Saldo cargado exitosamente",
-          description: `Se agregaron ${formatCurrency(totalAFavor)} a ${empresaCarga.nombre}`,
-        });
-      }, 400);
-    } catch {
-      clearInterval(intervalo);
-      setProgreso(0);
-      sileo.error({ title: "Error", description: "No se pudo cargar el saldo. Intenta de nuevo." });
-    } finally {
-      setConfirmando(false);
-    }
-  };
+    }, 400);
+  } catch {
+    clearInterval(intervalo);
+    setProgreso(0);
+    sileo.error({ title: "Error", description: "No se pudo cargar el saldo. Intenta de nuevo." });
+  } finally {
+    setConfirmando(false);
+  }
+};
 
   const handleNuevaCarga = () => {
     setFacturas([]);
     setArchivoNombre("");
     setCargaExitosa(false);
     setProgreso(0);
+    setConcepto("");
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
       <Sidebar />
@@ -312,7 +315,6 @@ export default function Fecap() {
             </p>
           </div>
 
-          {/* ── Tabs principales ── */}
           <Tabs
             aria-label="Módulo FECAP"
             color="danger"
@@ -323,9 +325,7 @@ export default function Fecap() {
               cursor: "bg-red-600",
             }}
           >
-            {/* ══════════════════════════════════════════
-                TAB 1 — ACTUALIZAR SALDO
-            ══════════════════════════════════════════ */}
+            {/* ══ TAB 1 — ACTUALIZAR SALDO ══ */}
             <Tab
               key="carga"
               title={
@@ -446,13 +446,13 @@ export default function Fecap() {
                       <Chip color="danger" variant="flat" size="sm">{facturas.length} facturas</Chip>
                     </div>
 
-                    {/* Tabla */}
-                    <div className="overflow-x-auto max-h-96">
+                    {/* Tabla con scroll */}
+                    <div className="overflow-x-auto max-h-96 overflow-y-auto">
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                           <tr className="bg-gray-50 dark:bg-gray-800/90 text-left">
-                            {["#","No. Factura","Dependencia","Fecha","Retención","Descuentos","Uso","A Favor"].map((h, i) => (
-                              <th key={i} className={`px-4 py-3 font-semibold text-gray-600 dark:text-gray-400 ${i >= 4 ? "text-right" : ""}`}>{h}</th>
+                            {["#", "No. Factura", "Dependencia", "Fecha", "Retención", "Descuentos", "Uso", "A Favor"].map((h, i) => (
+                              <th key={i} className={`px-4 py-3 font-semibold text-gray-600 dark:text-gray-400 whitespace-nowrap ${i >= 4 ? "text-right" : ""}`}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -460,20 +460,20 @@ export default function Fecap() {
                           {facturas.map((f, i) => (
                             <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                               <td className="px-4 py-3 text-gray-400">{i + 1}</td>
-                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{f.numero}</td>
+                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">{f.numero}</td>
                               <td className="px-4 py-3"><Chip size="sm" variant="flat">{f.dependencia}</Chip></td>
-                              <td className="px-4 py-3 text-gray-500">{f.fecha}</td>
-                              <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{formatCurrency(f.retencion)}</td>
-                              <td className="px-4 py-3 text-right text-red-500">{f.descuentos > 0 ? `-${formatCurrency(f.descuentos)}` : "—"}</td>
-                              <td className="px-4 py-3 text-right text-gray-500">{f.uso > 0 ? formatCurrency(f.uso) : "—"}</td>
-                              <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400">{formatCurrency(f.aFavor)}</td>
+                              <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{f.fecha}</td>
+                              <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatCurrency(f.retencion)}</td>
+                              <td className="px-4 py-3 text-right text-red-500 whitespace-nowrap">{f.descuentos > 0 ? `-${formatCurrency(f.descuentos)}` : "—"}</td>
+                              <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">{f.uso > 0 ? formatCurrency(f.uso) : "—"}</td>
+                              <td className="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400 whitespace-nowrap">{formatCurrency(f.aFavor)}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
 
-                    {/* Resumen */}
+                    {/* Resumen + Confirmar */}
                     <div className="p-6 border-t border-gray-100 dark:border-gray-800 space-y-6">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Resumen de carga</h3>
 
@@ -511,7 +511,24 @@ export default function Fecap() {
                         </div>
                       </div>
 
-                      {/* Progress bar — visible solo al confirmar */}
+                      {/* Input descripción */}
+                      <Input
+                        label="Descripción del movimiento"
+                        placeholder="Ej: Retenciones 2do semestre 2024 — obra Libramiento Norte"
+                        description="Este texto quedará registrado en el historial del movimiento"
+                        value={concepto}
+                        onValueChange={setConcepto}
+                        variant="bordered"
+                        classNames={{
+                          input: "text-sm",
+                          inputWrapper: "border-gray-200 dark:border-gray-700",
+                        }}
+                        startContent={
+                          <PencilSquareIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        }
+                      />
+
+                      {/* Progress bar */}
                       {(confirmando || progreso > 0) && (
                         <div className="space-y-2">
                           <div className="flex justify-between text-xs text-gray-500">
@@ -562,6 +579,9 @@ export default function Fecap() {
                         <p className="text-gray-500 mt-1">
                           Nuevo saldo: <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(saldoNuevo)}</span>
                         </p>
+                        {concepto && (
+                          <p className="text-xs text-gray-400 mt-2 italic">"{concepto}"</p>
+                        )}
                       </div>
                       <Progress value={100} color="success" className="w-full max-w-xs" aria-label="Completado" />
                       <Button color="danger" variant="flat"
@@ -575,9 +595,7 @@ export default function Fecap() {
               </div>
             </Tab>
 
-            {/* ══════════════════════════════════════════
-                TAB 2 — HISTORIAL
-            ══════════════════════════════════════════ */}
+            {/* ══ TAB 2 — HISTORIAL ══ */}
             <Tab
               key="historial"
               title={
@@ -632,7 +650,7 @@ export default function Fecap() {
                   </div>
                 </Card>
 
-                {/* Timeline de movimientos */}
+                {/* Timeline */}
                 {empresaHistorial && (
                   <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
                     <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
@@ -661,31 +679,24 @@ export default function Fecap() {
                       <div className="divide-y divide-gray-100 dark:divide-gray-800">
                         {movimientos.map((mov) => (
                           <div key={mov.id} className="flex items-start gap-4 p-5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                            {/* Indicador tipo */}
                             <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${
                               mov.tipoMovimiento === "CARGA_INICIAL"    ? "bg-green-500" :
                               mov.tipoMovimiento === "APLICACION_CURSO" ? "bg-red-500"   :
-                              mov.tipoMovimiento === "REVERSION"        ? "bg-yellow-500":
+                              mov.tipoMovimiento === "REVERSION"        ? "bg-yellow-500" :
                               "bg-gray-400"
                             }`} />
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <div className="flex items-center gap-2">
-                                  <Chip
-                                    size="sm"
-                                    variant="flat"
-                                    color={tipoColor(mov.tipoMovimiento)}
-                                  >
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Chip size="sm" variant="flat" color={tipoColor(mov.tipoMovimiento)}>
                                     {tipoLabel[mov.tipoMovimiento] ?? mov.tipoMovimiento}
                                   </Chip>
                                   {mov.inscripcion?.curso && (
-                                    <span className="text-xs text-gray-500">
-                                      · {mov.inscripcion.curso.nombre}
-                                    </span>
+                                    <span className="text-xs text-gray-500">· {mov.inscripcion.curso.nombre}</span>
                                   )}
                                 </div>
-                                <span className={`font-bold text-lg ${
+                                <span className={`font-bold text-lg whitespace-nowrap ${
                                   mov.monto >= 0
                                     ? "text-green-600 dark:text-green-400"
                                     : "text-red-600 dark:text-red-400"
@@ -694,7 +705,12 @@ export default function Fecap() {
                                 </span>
                               </div>
 
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{mov.concepto}</p>
+                              {/* Concepto / descripción */}
+                              {mov.concepto && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 italic">
+                                  "{mov.concepto}"
+                                </p>
+                              )}
 
                               <div className="flex items-center gap-4 mt-2 flex-wrap">
                                 <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -702,10 +718,10 @@ export default function Fecap() {
                                   {formatFecha(mov.creadoEn)}
                                 </span>
                                 <span className="text-xs text-gray-400">
-                                  Saldo anterior: <span className="font-medium">{formatCurrency(mov.saldoAnterior)}</span>
+                                  Anterior: <span className="font-medium">{formatCurrency(mov.saldoAnterior)}</span>
                                 </span>
                                 <span className="text-xs text-gray-400">
-                                  Saldo nuevo: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(mov.saldoNuevo)}</span>
+                                  Nuevo: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(mov.saldoNuevo)}</span>
                                 </span>
                               </div>
                             </div>
@@ -717,21 +733,17 @@ export default function Fecap() {
                     {/* Paginación */}
                     {totalMovimientos > 20 && (
                       <div className="flex items-center justify-between p-4 border-t border-gray-100 dark:border-gray-800">
-                        <Button
-                          size="sm" variant="flat" color="danger"
+                        <Button size="sm" variant="flat" color="danger"
                           isDisabled={paginaHistorial === 1}
-                          onPress={() => setPaginaHistorial((p) => p - 1)}
-                        >
+                          onPress={() => setPaginaHistorial((p) => p - 1)}>
                           Anterior
                         </Button>
                         <span className="text-sm text-gray-500">
                           Página {paginaHistorial} de {Math.ceil(totalMovimientos / 20)}
                         </span>
-                        <Button
-                          size="sm" variant="flat" color="danger"
+                        <Button size="sm" variant="flat" color="danger"
                           isDisabled={paginaHistorial >= Math.ceil(totalMovimientos / 20)}
-                          onPress={() => setPaginaHistorial((p) => p + 1)}
-                        >
+                          onPress={() => setPaginaHistorial((p) => p + 1)}>
                           Siguiente
                         </Button>
                       </div>
@@ -741,7 +753,6 @@ export default function Fecap() {
               </div>
             </Tab>
           </Tabs>
-
         </div>
       </main>
     </div>
