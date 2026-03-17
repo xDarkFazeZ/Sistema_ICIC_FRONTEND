@@ -811,6 +811,7 @@ export default function ParticipanteModal({
         title: "Sección Empresa incompleta",
         description:
           "Debes seleccionar una opción: Buscar empresa, Crear empresa o Asignar después.",
+          
       });
       return;
     }
