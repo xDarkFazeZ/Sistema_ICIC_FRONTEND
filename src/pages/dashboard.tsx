@@ -292,10 +292,10 @@ export default function Dashboard() {
               <Spinner size="lg" color="danger" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Gráfico de Barras - Inscripciones por Mes */}
               {dashboardData.inscripcionesPorMes.length > 0 && (
-                <Card className="p-6 bg-white dark:bg-gray-900">
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
                       <ChartBarIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -319,7 +319,7 @@ export default function Dashboard() {
 
               {/* Gráfico de Pastel - Distribución por Curso */}
               {dashboardData.distribucionCursos.length > 0 && (
-                <Card className="p-6 bg-white dark:bg-gray-900">
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-1">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                       <ChartBarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -339,7 +339,7 @@ export default function Dashboard() {
 
               {/* Gráfico FECAP — ancho completo */}
               {dashboardData.saldoFecapPorMes.length > 0 && (
-                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
                       <BanknotesIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -359,7 +359,7 @@ export default function Dashboard() {
 
               {/* Gráfico HH por Mes */}
               {dashboardData.horasHombrePorMes.length > 0 && (
-                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
                       <ChartBarIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -379,7 +379,7 @@ export default function Dashboard() {
 
               {/* Calendario de Cursos - ancho completo */}
               {dashboardData.cursosConEstado.length > 0 && (
-                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+                <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                       <CalendarIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -398,7 +398,7 @@ export default function Dashboard() {
               )}
 
               {/* Tabla de Pagos Pendientes - ocupa ambas columnas */}
-              <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
+              <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                 <TablaPagosPendientes
                   pagosPendientes={dashboardData.pagosPendientes}
                   onVerDetalle={handleVerDetalle}

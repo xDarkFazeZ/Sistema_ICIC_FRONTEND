@@ -1,21 +1,29 @@
 // src/components/dashboard/CalendarioCursos.tsx
 import { useState } from "react";
 import Calendar from "react-calendar";
-import { Card, Chip } from "@heroui/react";
+import { Chip, ScrollShadow } from "@heroui/react";
 import {
-  Calendar as CalendarIcon,
-  MapPin,
-  Users,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import "react-calendar/dist/Calendar.css";
+  MapPinIcon,
+  UserGroupIcon,
+  CalendarDaysIcon,
+  AcademicCapIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
+import "./calendario.css";
+
+interface Participante {
+  id: number;
+  nombre: string;
+  apellidoPaterno: string;
+  apellidoMaterno?: string;
+}
 
 interface Curso {
   id: number;
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
+  horario?: string;
   estado: "PROXIMO" | "EN_CURSO" | "TERMINADO";
   aula?: string;
   instructor?: {
@@ -23,251 +31,290 @@ interface Curso {
     apellidoPaterno: string;
   };
   inscritos: number;
+  participantes?: Participante[];
 }
 
 interface Props {
   cursos: Curso[];
 }
 
-export default function CalendarioCursos({ cursos }: Props) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+function getCursosDelDia(cursos: Curso[], date: Date): Curso[] {
+  return cursos.filter((curso) => {
+    const inicio = new Date(curso.fechaInicio);
+    const fin = new Date(curso.fechaFin);
+    const d = new Date(date);
+    inicio.setHours(0, 0, 0, 0);
+    fin.setHours(23, 59, 59, 999);
+    d.setHours(0, 0, 0, 0);
+    return d >= inicio && d <= fin;
+  });
+}
 
-  const getCursosDelDia = (date: Date) => {
-    return cursos.filter((curso) => {
-      const inicio = new Date(curso.fechaInicio);
-      const fin = new Date(curso.fechaFin);
-      inicio.setHours(0, 0, 0, 0);
-      fin.setHours(23, 59, 59, 999);
-      const dateCopy = new Date(date);
-      dateCopy.setHours(0, 0, 0, 0);
-      return dateCopy >= inicio && dateCopy <= fin;
-    });
-  };
+const ESTADO_CONFIG = {
+  PROXIMO:   { label: "Próximo",   color: "primary" as const,  emoji: "🕐" },
+  EN_CURSO:  { label: "En curso",  color: "success" as const,  emoji: "▶️" },
+  TERMINADO: { label: "Terminado", color: "default" as const,  emoji: "✅" },
+};
+
+const ESTADO_STYLES = {
+  PROXIMO:   { bg: "bg-blue-50 dark:bg-blue-900/20",   border: "border-blue-200 dark:border-blue-800",   icon: "🕐", text: "text-blue-600 dark:text-blue-400"   },
+  EN_CURSO:  { bg: "bg-green-50 dark:bg-green-900/20", border: "border-green-200 dark:border-green-800", icon: "▶️", text: "text-green-600 dark:text-green-400" },
+  TERMINADO: { bg: "bg-gray-50 dark:bg-gray-700/40",   border: "border-gray-200 dark:border-gray-600",   icon: "✅", text: "text-gray-500 dark:text-gray-400"   },
+};
+
+// ── CursoCard ────────────────────────────────────────────
+
+function CursoCard({ curso }: { curso: Curso }) {
+  const [showParticipantes, setShowParticipantes] = useState(false);
+  const cfg = ESTADO_CONFIG[curso.estado];
+
+  return (
+    <div className="border border-default-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between p-4 pb-2">
+        <h5 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug flex-1 pr-3">
+          {curso.nombre}
+        </h5>
+        <Chip size="sm" color={cfg.color} variant="flat" className="shrink-0 text-xs">
+          {cfg.emoji} {cfg.label}
+        </Chip>
+      </div>
+
+      <div className="px-4 pb-4 space-y-1.5">
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <CalendarDaysIcon className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            {new Date(curso.fechaInicio).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+            {" — "}
+            {new Date(curso.fechaFin).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+          </span>
+        </div>
+
+        {curso.horario && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <ClockIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>{curso.horario}</span>
+          </div>
+        )}
+
+        {curso.aula && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>Aula: {curso.aula}</span>
+          </div>
+        )}
+
+        {curso.instructor && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <AcademicCapIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>{curso.instructor.nombre} {curso.instructor.apellidoPaterno}</span>
+          </div>
+        )}
+
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowParticipantes((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-400 font-medium hover:underline"
+          >
+            <UserGroupIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>{curso.inscritos} participante{curso.inscritos !== 1 ? "s" : ""}</span>
+            <span className="text-default-400">{showParticipantes ? "▲" : "▼"}</span>
+          </button>
+
+          {showParticipantes && (
+            <ScrollShadow className="mt-2 max-h-32">
+              <div className="space-y-1">
+                {curso.participantes && curso.participantes.length > 0 ? (
+                  curso.participantes.map((p, i) => (
+                    <div key={p.id} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-default-50 dark:bg-gray-700/50">
+                      <span className="text-[10px] text-default-400 w-4 text-right shrink-0">{i + 1}.</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                        {p.nombre} {p.apellidoPaterno} {p.apellidoMaterno || ""}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-default-400 italic pl-2">Sin participantes registrados</p>
+                )}
+              </div>
+            </ScrollShadow>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ─────────────────────────────────
+
+export default function CalendarioCursos({ cursos }: Props) {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const cursosDelDia = getCursosDelDia(cursos, selectedDate);
 
   const tileClassName = ({ date, view }: { date: Date; view: string }) => {
-    if (view === "month") {
-      const cursosDia = getCursosDelDia(date);
-      if (cursosDia.length > 0) {
-        const tieneProximo = cursosDia.some((c) => c.estado === "PROXIMO");
-        const tieneEnCurso = cursosDia.some((c) => c.estado === "EN_CURSO");
-
-        if (tieneEnCurso)
-          return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 font-medium";
-        if (tieneProximo)
-          return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 font-medium";
-        return "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 font-medium";
-      }
-    }
-    return null;
+    if (view !== "month") return null;
+    const lista = getCursosDelDia(cursos, date);
+    if (lista.length === 0) return null;
+    const tieneEnCurso = lista.some((c) => c.estado === "EN_CURSO");
+    const tieneProximo = lista.some((c) => c.estado === "PROXIMO");
+    if (tieneEnCurso) return "tiene-curso en-curso";
+    if (tieneProximo) return "tiene-curso proximo";
+    return "tiene-curso terminado";
   };
 
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
-    if (view === "month") {
-      const cursosDia = getCursosDelDia(date);
-      if (cursosDia.length > 0) {
-        return (
-          <div className="flex justify-center mt-0.5">
-            <span className="text-[10px] font-bold bg-white/50 dark:bg-black/50 px-1.5 py-0.5 rounded-full">
-              {cursosDia.length}
-            </span>
-          </div>
-        );
-      }
-    }
-    return null;
+    if (view !== "month") return null;
+    const lista = getCursosDelDia(cursos, date);
+    if (lista.length === 0) return null;
+    const tieneEnCurso = lista.some((c) => c.estado === "EN_CURSO");
+    const tieneProximo = lista.some((c) => c.estado === "PROXIMO");
+    const dotColor = tieneEnCurso ? "#22c55e" : tieneProximo ? "#3b82f6" : "#9ca3af";
+    return (
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "1px" }}>
+        <span style={{
+          width: "5px", height: "5px", borderRadius: "50%",
+          background: dotColor, display: "inline-block",
+        }} />
+      </div>
+    );
   };
 
-  const cursosSeleccionados = getCursosDelDia(selectedDate);
-
   return (
-    <Card className="p-6 bg-white dark:bg-gray-900">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
+    <div className="flex flex-col gap-6">
+
+      {/* ── Fila 1: Calendario + Cursos del día ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        {/* Calendario */}
+        <div className="lg:col-span-2 p-4 rounded-xl border border-default-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
           <Calendar
-            onChange={setSelectedDate}
+            onChange={(val) => setSelectedDate(val as Date)}
             value={selectedDate}
             tileClassName={tileClassName}
             tileContent={tileContent}
             locale="es-MX"
-            prevLabel={<ChevronLeft className="w-5 h-5" />}
-            nextLabel={<ChevronRight className="w-5 h-5" />}
             prev2Label={null}
             next2Label={null}
-            formatMonthYear={(locale, date) => {
-              return date.toLocaleDateString("es-MX", {
-                month: "long",
-                year: "numeric",
-              });
-            }}
-            formatShortWeekday={(locale, date) => {
-              return date.toLocaleDateString("es-MX", { weekday: "narrow" });
-            }}
-            className="rounded-lg border-none shadow-sm w-full"
+            formatShortWeekday={(_, date) =>
+              date.toLocaleDateString("es-MX", { weekday: "narrow" })
+            }
           />
-
-          <div className="mt-6 space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              📌 Estado de cursos:
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-blue-500 shadow-lg shadow-blue-500/30"></div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Próximos a iniciar
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg shadow-green-500/30"></div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                En curso
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-gray-500 shadow-lg shadow-gray-500/30"></div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Terminados
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-blue-100 dark:border-gray-700">
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">
-              📊 Resumen rápido
-            </p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                  {cursos.filter((c) => c.estado === "PROXIMO").length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Próximos
-                </p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {cursos.filter((c) => c.estado === "EN_CURSO").length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  En curso
-                </p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
-                  {cursos.filter((c) => c.estado === "TERMINADO").length}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Terminados
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="lg:col-span-2">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-lg border-b border-gray-200 dark:border-gray-700 pb-2">
-            {selectedDate.toLocaleDateString("es-MX", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
+        {/* Cursos del día */}
+        <div className="lg:col-span-3 flex flex-col gap-3">
+          <h4 className="font-semibold text-gray-900 dark:text-white text-sm border-b border-default-200 dark:border-gray-700 pb-2 capitalize">
+            📅 {selectedDate.toLocaleDateString("es-MX", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric",
             })}
           </h4>
 
-          {cursosSeleccionados.length > 0 ? (
-            <div
-              className="space-y-3 max-h-96 overflow-y-auto pr-2 
-                          [&::-webkit-scrollbar]:w-1.5
-                          [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:dark:bg-gray-800
-                          [&::-webkit-scrollbar-track]:rounded-full
-                          [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:dark:bg-gray-600
-                          [&::-webkit-scrollbar-thumb]:rounded-full
-                          [&::-webkit-scrollbar-thumb:hover]:bg-gray-400 [&::-webkit-scrollbar-thumb:hover]:dark:bg-gray-500"
-            >
-              {cursosSeleccionados.map((curso) => (
-                <div
-                  key={curso.id}
-                  className="group p-5 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800/50 hover:border-red-300 dark:hover:border-red-800"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h5 className="font-semibold text-gray-900 dark:text-white text-lg">
-                      {curso.nombre}
-                    </h5>
-                    <Chip
-                      size="sm"
-                      className={
-                        curso.estado === "PROXIMO"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-medium px-3"
-                          : curso.estado === "EN_CURSO"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 font-medium px-3"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 font-medium px-3"
-                      }
-                    >
-                      {curso.estado === "PROXIMO"
-                        ? "🕐 Próximo"
-                        : curso.estado === "EN_CURSO"
-                          ? "▶️ En curso"
-                          : "✅ Terminado"}
-                    </Chip>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    {curso.instructor && (
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <span className="text-lg">👨‍🏫</span>
-                        <span>
-                          {curso.instructor.nombre}{" "}
-                          {curso.instructor.apellidoPaterno}
-                        </span>
-                      </div>
-                    )}
-
-                    {curso.aula && (
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <MapPin className="w-4 h-4" />
-                        <span>Aula: {curso.aula}</span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                      <Users className="w-4 h-4" />
-                      <span>{curso.inscritos} participantes</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 md:col-span-2">
-                      <CalendarIcon className="w-4 h-4" />
-                      <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
-                        {new Date(curso.fechaInicio).toLocaleDateString(
-                          "es-MX",
-                          {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          },
-                        )}{" "}
-                        -{" "}
-                        {new Date(curso.fechaFin).toLocaleDateString("es-MX", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {cursosDelDia.length > 0 ? (
+            <ScrollShadow className="max-h-72">
+              <div className="space-y-3 pr-1">
+                {cursosDelDia.map((curso) => (
+                  <CursoCard key={curso.id} curso={curso} />
+                ))}
+              </div>
+            </ScrollShadow>
           ) : (
-            <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-              <CalendarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                No hay cursos programados
-              </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                Selecciona otra fecha para ver más opciones
-              </p>
+            <div className="flex-1 flex flex-col items-center justify-center py-10 rounded-xl border-2 border-dashed border-default-200 dark:border-gray-700 bg-default-50 dark:bg-gray-800/30">
+              <CalendarDaysIcon className="w-12 h-12 text-default-300 dark:text-gray-600 mb-3" />
+              <p className="text-default-500 dark:text-gray-400 font-medium text-sm">Sin cursos este día</p>
+              <p className="text-xs text-default-400 dark:text-gray-500 mt-1">Selecciona otro día</p>
             </div>
           )}
         </div>
       </div>
-    </Card>
+
+      {/* ── Fila 2: Estado + Resumen ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Estado de cursos */}
+        <div className="p-5 rounded-xl border border-default-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">
+            Estado de cursos
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {(["PROXIMO", "EN_CURSO", "TERMINADO"] as const).map((estado) => {
+              const cfg = ESTADO_CONFIG[estado];
+              const styles = ESTADO_STYLES[estado];
+              const count = cursos.filter((c) => c.estado === estado).length;
+              return (
+                <div key={estado} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border ${styles.bg} ${styles.border}`}>
+                  <span className="text-2xl">{styles.icon}</span>
+                  <p className={`text-3xl font-extrabold ${styles.text}`}>{count}</p>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 text-center leading-tight">
+                    {cfg.label}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Resumen general */}
+        <div className="p-5 rounded-xl border border-default-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider">
+            Resumen general
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <div className="p-2.5 rounded-lg bg-red-100 dark:bg-red-900/40 shrink-0">
+                <CalendarDaysIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-red-600 dark:text-red-400">{cursos.length}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Total cursos</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+              <div className="p-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 shrink-0">
+                <UserGroupIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {cursos.reduce((sum, c) => sum + c.inscritos, 0)}
+                </p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Total inscritos</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="p-2.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 shrink-0">
+                <ClockIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+                  {getCursosDelDia(cursos, new Date()).length}
+                </p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Cursos hoy</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
+              <div className="p-2.5 rounded-lg bg-teal-100 dark:bg-teal-900/40 shrink-0">
+                <AcademicCapIcon className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-teal-600 dark:text-teal-400">
+                  {new Set(
+                    cursos
+                      .filter(c => c.instructor)
+                      .map(c => `${c.instructor!.nombre} ${c.instructor!.apellidoPaterno}`)
+                  ).size}
+                </p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Instructores</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 }

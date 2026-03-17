@@ -50,6 +50,8 @@ export default function ModalForm({
       size={size}
       scrollBehavior="inside"
       hideCloseButton
+      isDismissable={false}
+      isKeyboardDismissDisabled
       classNames={{
         // ✅ Fondo sólido tanto en light como en dark — sin opacidad
         base: `bg-white dark:bg-gray-900 ${className}`,

@@ -282,28 +282,63 @@ export default function InscripcionModal({
       sileo.warning({ title: "Curso requerido", description: "Selecciona un curso" });
       return false;
     }
+
+    if (!form.metodoPago) {
+      sileo.warning({ title: "Método de pago requerido", description: "Selecciona un método de pago para continuar." });
+      return false;
+    }
+
+    if (!form.tipoPrecioAplicado) {
+      sileo.warning({ title: "Tipo de precio requerido", description: "Selecciona el tipo de precio del curso." });
+      return false;
+    }
+
+    if (!form.estadoPago) {
+      sileo.warning({ title: "Estado de pago requerido", description: "Selecciona el estado de pago." });
+      return false;
+    }
+
+    if (form.estadoPago === "PAGADO" && !form.fechaPago) {
+      sileo.warning({ title: "Fecha de pago requerida", description: "Indica la fecha en que se realizó el pago." });
+      return false;
+    }
+
     if (metodo?.requiereEmpresa && !empresaData) {
-      sileo.warning({ title: "Empresa requerida", description: "Este método requiere empresa asociada" });
+      sileo.warning({ title: "Empresa requerida", description: "Este método requiere empresa asociada al participante." });
       return false;
     }
+
     if (saldoInfo && !saldoInfo.suficiente) {
-      sileo.warning({ title: "Saldo insuficiente", description: "Saldo FECAP insuficiente para esta inscripción" });
+      sileo.warning({ title: "Saldo insuficiente", description: "Saldo FECAP insuficiente para esta inscripción." });
       return false;
     }
+
     if (form.metodoPago === "FINANCIAMIENTO") {
       if (!form.numeroPagos || form.numeroPagos < 1) {
-        sileo.warning({ title: "Campo requerido", description: "Ingresa el número de pagos" });
+        sileo.warning({ title: "Campo requerido", description: "Ingresa el número de pagos." });
         return false;
       }
       if (!form.periodicidad) {
-        sileo.warning({ title: "Campo requerido", description: "Selecciona la periodicidad" });
+        sileo.warning({ title: "Campo requerido", description: "Selecciona la periodicidad de los pagos." });
+        return false;
+      }
+      if (!form.fechaPrimerPago) {
+        sileo.warning({ title: "Fecha requerida", description: "Indica la fecha del primer pago." });
         return false;
       }
     }
-    if (form.metodoPago === "VALE_AFILIACION" && !form.codigoVale) {
-      sileo.warning({ title: "Código requerido", description: "Ingresa el código del vale" });
-      return false;
+
+    if (form.metodoPago === "VALE_AFILIACION") {
+      if (!form.codigoVale) {
+        sileo.warning({ title: "Código requerido", description: "Ingresa el código del vale de afiliación." });
+        return false;
+      }
+      if (!form.montoDescuento || form.montoDescuento <= 0) {
+        sileo.warning({ title: "Descuento requerido", description: "Ingresa el monto del descuento del vale." });
+        return false;
+      }
     }
+
     return true;
   };
 
@@ -374,6 +409,8 @@ export default function InscripcionModal({
       isLoading={isSubmitting}
       onSubmit={handleSubmit}
       submitText={inscripcionToEdit ? "Guardar cambios" : "Registrar inscripción"}
+      hideCloseButton
+      hideCancelButton
     >
       <div className="space-y-5 px-1">
 
@@ -437,12 +474,14 @@ export default function InscripcionModal({
         )}
 
         {/* Método de pago */}
-        {/* Método de pago */}
         <Select
           label="Método de pago"
           placeholder="Selecciona un método"
           selectedKeys={form.metodoPago ? [form.metodoPago] : []}
-          onChange={(e) => handleChange("metodoPago", e.target.value)}
+          disallowEmptySelection  // ← agrega esto
+          onChange={(e) => {
+            if (e.target.value) handleChange("metodoPago", e.target.value);
+          }}
           startContent={<span className="text-base">{metodo?.icon}</span>}
         >
           {METODOS_PAGO
@@ -643,7 +682,10 @@ export default function InscripcionModal({
           <Select
             label="Estado de pago"
             selectedKeys={form.estadoPago ? [form.estadoPago] : []}
-            onChange={(e) => handleChange("estadoPago", e.target.value)}
+            disallowEmptySelection  // ← agrega esto
+            onChange={(e) => {
+              if (e.target.value) handleChange("estadoPago", e.target.value);
+            }}
           >
             {ESTADO_PAGO.map((ep) => (
               <SelectItem key={ep.key}>{ep.label}</SelectItem>
@@ -653,12 +695,12 @@ export default function InscripcionModal({
           {/* Fecha de pago — ahora con DatePicker de HeroUI */}
           {form.estadoPago === "PAGADO" && (
             <DatePicker
-              label="Fecha de pago"
+              label="Fecha del pago"
               value={form.fechaPago ? parseDate(form.fechaPago) as any : null}
               onChange={(date) => handleChange("fechaPago", date ? date.toString() : null)}
-              maxValue={parseDate(new Date().toISOString().split("T")[0]) as any}
               showMonthAndYearPickers
               granularity="day"
+              className="md:col-span-3"
             />
           )}
         </div>

@@ -30,3 +30,8 @@ export const eliminarInscripcion = async (id: number) => {
   const res = await apiClient.delete(`/inscripciones/${id}`);
   return res.data;
 };
+
+export const obtenerInscripcionesPorCurso = async (cursoId: number) => {
+  const res = await apiClient.get("/inscripciones", { params: { cursoId } });
+  return res.data;
+};

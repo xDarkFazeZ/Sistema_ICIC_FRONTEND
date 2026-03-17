@@ -32,25 +32,24 @@ const CustomTooltip = ({ active, payload }: any) => {
 export default function GraficoPastel({ data }: Props) {
   const total = data.reduce((sum, item) => sum + item.total, 0);
 
-  // Inyectar el porcentaje en cada dato para usarlo en el tooltip
   const enriched = data.map(item => ({
     ...item,
     __pct: total > 0 ? ((item.total / total) * 100).toFixed(1) : "0",
   }));
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 items-center w-full">
+    <div className="flex flex-col items-center gap-4 w-full">
 
-      {/* ── Donut ── */}
-      <div className="w-full md:w-1/2 h-56 flex-shrink-0">
+      {/* ── Donut más pequeña ── */}
+      <div className="w-full h-44">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={enriched}
               cx="50%"
               cy="50%"
-              innerRadius={52}
-              outerRadius={96}
+              innerRadius={40}
+              outerRadius={72}
               paddingAngle={3}
               dataKey="total"
               nameKey="nombre"
@@ -69,20 +68,17 @@ export default function GraficoPastel({ data }: Props) {
         </ResponsiveContainer>
       </div>
 
-      {/* ── Leyenda ── */}
-      <div className="w-full md:w-1/2 flex flex-col gap-2 overflow-y-auto max-h-56 pr-1">
+      {/* ── Leyenda vertical ── */}
+      <div className="w-full flex flex-col gap-2 overflow-y-auto max-h-40 pr-1">
         {enriched.map((item, index) => (
           <div key={index} className="flex items-center gap-3">
-            {/* Dot */}
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
             />
-            {/* Nombre del curso */}
-            <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 leading-tight">
+            <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 leading-tight truncate">
               {item.nombre}
             </span>
-            {/* Porcentaje y conteo */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-xs font-bold text-gray-900 dark:text-white">
                 {item.__pct}%
@@ -94,10 +90,9 @@ export default function GraficoPastel({ data }: Props) {
           </div>
         ))}
 
-        {/* Total */}
         <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400">
           <span>Total</span>
-          <span>{total} inscripción{total !== 1 ? "es" : ""}</span>
+          <span>{total} inscripcion{total !== 1 ? "es" : ""}</span>
         </div>
       </div>
 

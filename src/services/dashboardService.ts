@@ -23,6 +23,13 @@ export interface CursoEstado {
     apellidoPaterno: string;
   };
   inscritos: number;
+  // ← Agregar esto
+  participantes?: Array<{
+    id: number;
+    nombre: string;
+    apellidoPaterno: string;
+    apellidoMaterno?: string;
+  }>;
 }
 
 export interface PagoPendiente {

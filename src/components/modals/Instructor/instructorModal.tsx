@@ -207,11 +207,6 @@ export default function InstructorModal({
     }
   };
 
-  // Progreso de campos obligatorios
-  const requeridos = ["nombre", "apellidoPaterno"] as const;
-  const filled = requeridos.filter((f) => form[f].trim().length >= 2).length;
-  const pct = Math.round((filled / requeridos.length) * 100);
-
   const fieldProps = (field: keyof typeof INITIAL_FORM) => ({
     value: form[field],
     onValueChange: (v: string) => handleChange(field, v),
@@ -233,42 +228,6 @@ export default function InstructorModal({
       formId={FORM_ID}
     >
       <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
-        {/* Barra de progreso */}
-        {!instructorToEdit && (
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-default-50 border border-default-200">
-            <div className="relative w-10 h-10 flex-shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#e4e4e7" strokeWidth="3" />
-                <circle
-                  cx="20" cy="20" r="16" fill="none"
-                  stroke={pct === 100 ? "#17c964" : "#006FEE"}
-                  strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 16}`}
-                  strokeDashoffset={`${2 * Math.PI * 16 * (1 - pct / 100)}`}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-default-700">
-                {pct}%
-              </span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-default-600">
-                Campos obligatorios completados
-              </p>
-              <div className="w-full h-1.5 bg-default-200 rounded-full mt-1 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${pct}%`,
-                    backgroundColor: pct === 100 ? "#17c964" : "#006FEE",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Error del servidor */}
         {submitError && (
           <div className="flex items-start gap-3 p-3 rounded-xl bg-danger-50 border border-danger-200">
