@@ -306,6 +306,7 @@ export default function CursoModal({
         size="3xl"
         isLoading={isLoading}
         className="bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50"
+        hideFooter
       >
         <form id="modal-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Información básica */}

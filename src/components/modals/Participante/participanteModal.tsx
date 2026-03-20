@@ -52,94 +52,39 @@ import {
   CheckCircleIcon as CheckCircleSolid,
 } from "@heroicons/react/24/solid";
 
-const C = { accentSolid: "#4f46e5" };
-
+// ── Iconos inline ─────────────────────────────────────────────────────────────
 const Ic = {
   User: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
   MapPin: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
       <circle cx="12" cy="10" r="3" />
     </svg>
   ),
   Receipt: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
       <path d="M14 8H8M16 12H8M13 16H8" />
     </svg>
   ),
   Building: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2" />
       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
   ),
   Book: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
     </svg>
   ),
   Check: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
@@ -149,47 +94,20 @@ const Ic = {
     </svg>
   ),
   AlertCircle: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   ),
   X: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="13"
-      height="13"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   ),
   Info: () => (
-    <svg
-      viewBox="0 0 24 24"
-      width="13"
-      height="13"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -197,84 +115,37 @@ const Ic = {
   ),
 };
 
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 type EmpresaMode = "buscar" | "crear" | "despues" | null;
 type CursoMode = "buscar" | "despues" | null;
 
-const validators: Record<
-  string,
-  (v: any, form?: Record<string, any>) => string | null
-> = {
-  nombre: (v) =>
-    !v || v.trim().length < 2
-      ? "Requerido · Mínimo 2 caracteres"
-      : v.length > 50
-        ? "Máximo 50 caracteres"
-        : null,
-  apellidoPaterno: (v) =>
-    !v || v.trim().length < 2
-      ? "Requerido · Mínimo 2 caracteres"
-      : v.length > 50
-        ? "Máximo 50 caracteres"
-        : null,
-  fechaNacimiento: (v) => (!v ? "La fecha de nacimiento es requerida" : null),
-  apellidoMaterno: (v) =>
-    v && v.trim().length < 2
-      ? "Mínimo 2 caracteres"
-      : v && v.length > 50
-        ? "Máximo 50 caracteres"
-        : null,
-  celular: (v) =>
-    v && !/^[0-9]{10}$/.test(v) ? "Debe tener exactamente 10 dígitos" : null,
-  correo: (v) =>
-    v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-      ? "Formato de correo inválido"
-      : null,
-  curp: (v) =>
-    v && !/^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(v)
-      ? "CURP inválida · 18 caracteres"
-      : null,
-  rfc: (v) =>
-    v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v)
-      ? "RFC inválido · 12-13 caracteres"
-      : null,
-  calle: (v) =>
-    v && v.trim().length < 3
-      ? "Mínimo 3 caracteres"
-      : v && v.length > 100
-        ? "Máximo 100 caracteres"
-        : null,
-  colonia: (v) =>
-    v && v.trim().length < 3
-      ? "Mínimo 3 caracteres"
-      : v && v.length > 100
-        ? "Máximo 100 caracteres"
-        : null,
-  cp: (v) =>
-    v && !/^\d{5}$/.test(v) ? "5 dígitos numéricos requeridos" : null,
-  empresaId: (v, form) =>
-    form?.esAfiliado && form?.empresaMode === "buscar" && !v
-      ? "Requerido cuando el participante es afiliado"
-      : null,
+// ── Validators de formato (solo UX inline, NO bloquean el submit) ─────────────
+// La validación autoritativa vive en el backend (Zod).
+// Estos hints muestran feedback mientras el usuario escribe.
+const validators: Record<string, (v: any) => string | null> = {
+  nombre:          (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
+  apellidoPaterno: (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
+  apellidoMaterno: (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
+  celular:         (v) => v && !/^[0-9]{10}$/.test(v) ? "10 dígitos" : null,
+  correo:          (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Formato inválido" : null,
+  curp:            (v) => v && !/^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(v) ? "18 caracteres · formato CURP" : null,
+  rfc:             (v) => v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v) ? "12-13 caracteres · formato RFC" : null,
+  cp:              (v) => v && !/^\d{5}$/.test(v) ? "5 dígitos" : null,
+  fechaNacimiento: () => null, // el DatePicker ya restringe
+  empresaId:       () => null, // se valida con guards de flujo
 };
 
-const REQUIRED_FIELDS = ["nombre", "apellidoPaterno", "fechaNacimiento"];
+// ── Componentes auxiliares ────────────────────────────────────────────────────
 
-function RequiredLabel({
-  label,
-  required,
-}: {
-  label: string;
-  required?: boolean;
-}) {
+/** Asterisco rojo para requeridos, "(opcional)" para el resto — solo visual */
+function RequiredLabel({ label, required }: { label: string; required?: boolean }) {
   return (
     <span>
       {label}
       {required ? (
         <span className="text-rose-500 ml-0.5">*</span>
       ) : (
-        <span className="text-slate-300 text-[10px] ml-1.5 font-normal">
-          (opcional)
-        </span>
+        <span className="text-slate-300 text-[10px] ml-1.5 font-normal">(opcional)</span>
       )}
     </span>
   );
@@ -321,34 +192,23 @@ function ModeCard({
         ? "border-success bg-success-50 dark:bg-success-900/20 shadow-lg shadow-success/20"
         : "border-warning bg-warning-50 dark:bg-warning-900/20 shadow-lg shadow-warning/20";
   const iconColor =
-    color === "danger"
-      ? "text-danger"
-      : color === "success"
-        ? "text-success"
-        : "text-warning";
+    color === "danger" ? "text-danger" : color === "success" ? "text-success" : "text-warning";
   const textColor =
-    color === "danger"
-      ? "text-danger"
-      : color === "success"
-        ? "text-success"
-        : "text-warning";
+    color === "danger" ? "text-danger" : color === "success" ? "text-success" : "text-warning";
+
   return (
     <Card
       isPressable
       onPress={onPress}
-      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${active ? activeClass : "border-default-200 hover:border-default-400 hover:shadow-md"}`}
+      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
+        active ? activeClass : "border-default-200 hover:border-default-400 hover:shadow-md"
+      }`}
     >
       <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-        <div
-          className={`p-2 rounded-full ${active ? `bg-${color}/10` : "bg-default-100"}`}
-        >
-          <span className={active ? iconColor : "text-default-500"}>
-            {icon}
-          </span>
+        <div className={`p-2 rounded-full ${active ? `bg-${color}/10` : "bg-default-100"}`}>
+          <span className={active ? iconColor : "text-default-500"}>{icon}</span>
         </div>
-        <span
-          className={`text-sm font-semibold ${active ? textColor : "text-default-600"}`}
-        >
+        <span className={`text-sm font-semibold ${active ? textColor : "text-default-600"}`}>
           {label}
         </span>
         <span className="text-xs text-default-400">{description}</span>
@@ -377,11 +237,7 @@ function DuplicadoModal({
 }) {
   if (!participante) return null;
 
-  const nombreCompleto = [
-    participante.nombre,
-    participante.apellidoPaterno,
-    participante.apellidoMaterno,
-  ]
+  const nombreCompleto = [participante.nombre, participante.apellidoPaterno, participante.apellidoMaterno]
     .filter(Boolean)
     .join(" ");
   const cursosAnteriores: any[] = participante.inscripciones ?? [];
@@ -394,8 +250,7 @@ function DuplicadoModal({
       backdrop="blur"
       classNames={{
         base: "border border-warning-200",
-        header:
-          "bg-warning-50 dark:bg-warning-900/20 border-b border-warning-200",
+        header: "bg-warning-50 dark:bg-warning-900/20 border-b border-warning-200",
       }}
     >
       <ModalContent>
@@ -417,31 +272,21 @@ function DuplicadoModal({
                 <UserIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-default-800 text-sm">
-                  {nombreCompleto}
-                </p>
+                <p className="font-semibold text-default-800 text-sm">{nombreCompleto}</p>
                 <div className="mt-1 space-y-0.5">
                   {participante.correo && (
-                    <p className="text-xs text-default-500">
-                      {participante.correo}
-                    </p>
+                    <p className="text-xs text-default-500">{participante.correo}</p>
                   )}
                   {participante.celular && (
-                    <p className="text-xs text-default-500">
-                      Tel: {participante.celular}
-                    </p>
+                    <p className="text-xs text-default-500">Tel: {participante.celular}</p>
                   )}
                   {participante.empresa && (
-                    <p className="text-xs text-default-500">
-                      Empresa: {participante.empresa.nombre}
-                    </p>
+                    <p className="text-xs text-default-500">Empresa: {participante.empresa.nombre}</p>
                   )}
                 </div>
               </div>
               {participante.esAfiliado && (
-                <Chip size="sm" color="warning" variant="flat">
-                  Afiliado
-                </Chip>
+                <Chip size="sm" color="warning" variant="flat">Afiliado</Chip>
               )}
             </div>
             {cursosAnteriores.length > 0 && (
@@ -481,9 +326,7 @@ function DuplicadoModal({
           </div>
 
           {cursoSeleccionado &&
-            cursosAnteriores.some(
-              (i: any) => i.cursoId === cursoSeleccionado.id,
-            ) && (
+            cursosAnteriores.some((i: any) => i.cursoId === cursoSeleccionado.id) && (
               <div className="flex items-start gap-2 rounded-xl bg-danger-50 border border-danger-200 p-3">
                 <ExclamationOutline className="w-4 h-4 text-danger-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-danger-700 font-medium">
@@ -508,9 +351,7 @@ function DuplicadoModal({
                 </p>
                 <p className="text-xs text-success-600 dark:text-success-400">
                   Conserva su historial y{" "}
-                  {cursoSeleccionado
-                    ? "continúa a la inscripción"
-                    : "lo selecciona directamente"}
+                  {cursoSeleccionado ? "continúa a la inscripción" : "lo selecciona directamente"}
                 </p>
               </div>
             </button>
@@ -535,12 +376,7 @@ function DuplicadoModal({
           </div>
         </ModalBody>
         <ModalFooter className="border-t border-default-200 pt-3">
-          <Button
-            variant="light"
-            size="sm"
-            onPress={onCancel}
-            isDisabled={isLoading}
-          >
+          <Button variant="light" size="sm" onPress={onCancel} isDisabled={isLoading}>
             Volver al formulario
           </Button>
         </ModalFooter>
@@ -573,9 +409,7 @@ export default function ParticipanteModal({
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [duplicadoDetectado, setDuplicadoDetectado] = useState<any | null>(
-    null,
-  );
+  const [duplicadoDetectado, setDuplicadoDetectado] = useState<any | null>(null);
 
   const [inscripcionModalOpen, setInscripcionModalOpen] = useState(false);
   const [inscripcionData, setInscripcionData] = useState<any>(null);
@@ -585,9 +419,7 @@ export default function ParticipanteModal({
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
   const [empresaSearch, setEmpresaSearch] = useState("");
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<any | null>(
-    null,
-  );
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<any | null>(null);
   const [empresaCompleta, setEmpresaCompleta] = useState<any | null>(null);
   const [empresaCreada, setEmpresaCreada] = useState<any | null>(null);
 
@@ -599,6 +431,7 @@ export default function ParticipanteModal({
 
   const timeouts = useRef<Record<string, any>>({});
 
+  // ── Reset / pre-carga al abrir ──────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
       setForm({ esAfiliado: false });
@@ -621,6 +454,7 @@ export default function ParticipanteModal({
       setEmpresaModalOpen(false);
       return;
     }
+
     if (participanteToEdit) {
       setForm({
         ...participanteToEdit,
@@ -649,6 +483,7 @@ export default function ParticipanteModal({
       }
       return;
     }
+
     if (cursoIdParaAsignar) {
       setCursoMode("buscar");
       obtenerCursoPorId(cursoIdParaAsignar)
@@ -664,19 +499,15 @@ export default function ParticipanteModal({
 
   useEffect(() => {
     if (form.empresaId && !empresaCompleta) {
-      obtenerEmpresa(form.empresaId)
-        .then(setEmpresaCompleta)
-        .catch(console.error);
+      obtenerEmpresa(form.empresaId).then(setEmpresaCompleta).catch(console.error);
     }
   }, [form.empresaId, empresaCompleta]);
 
+  // ── Búsquedas con debounce ──────────────────────────────────────────────────
   const buscarEmpresasDebounced = (value: string) => {
     setEmpresaSearch(value);
     clearTimeout(timeouts.current["emp"]);
-    if (!value || value.trim().length < 2) {
-      setEmpresas([]);
-      return;
-    }
+    if (!value || value.trim().length < 2) { setEmpresas([]); return; }
     timeouts.current["emp"] = setTimeout(async () => {
       try {
         setLoadingEmpresas(true);
@@ -690,10 +521,7 @@ export default function ParticipanteModal({
   const buscarCursosDebounced = (value: string) => {
     setCursoSearch(value);
     clearTimeout(timeouts.current["cur"]);
-    if (!value || value.trim().length < 2) {
-      setCursos([]);
-      return;
-    }
+    if (!value || value.trim().length < 2) { setCursos([]); return; }
     timeouts.current["cur"] = setTimeout(async () => {
       try {
         setLoadingCursos(true);
@@ -705,6 +533,7 @@ export default function ParticipanteModal({
     }, 350);
   };
 
+  // ── Handlers de modo ────────────────────────────────────────────────────────
   const handleEmpresaMode = (mode: EmpresaMode) => {
     if (mode === empresaMode) return;
     setEmpresaMode(mode);
@@ -732,69 +561,43 @@ export default function ParticipanteModal({
     handleChange("cursoId", null);
   };
 
+  // ── Handlers de campo ───────────────────────────────────────────────────────
   const handleChange = (field: string, value: any) => {
     const v = value === "" ? null : value;
-    const updated = { ...form, [field]: v };
-    setForm(updated);
-    if (touched[field] && validators[field])
-      setErrors((p) => ({
-        ...p,
-        [field]: validators[field](v, { ...updated, empresaMode }),
-      }));
+    setForm((prev) => ({ ...prev, [field]: v }));
+    // Mostrar hint de formato solo si el campo ya fue tocado
+    if (touched[field] && validators[field]) {
+      setErrors((p) => ({ ...p, [field]: validators[field](v) }));
+    }
   };
 
   const handleBlur = (field: string) => {
     setTouched((p) => ({ ...p, [field]: true }));
-    if (validators[field])
-      setErrors((p) => ({
-        ...p,
-        [field]: validators[field](form[field], { ...form, empresaMode }),
-      }));
-  };
-
-  const validateAll = () => {
-    const e: Record<string, string | null> = {};
-    for (const [field, validate] of Object.entries(validators)) {
-      const err = validate(form[field], { ...form, empresaMode });
-      if (err) e[field] = err;
+    if (validators[field]) {
+      setErrors((p) => ({ ...p, [field]: validators[field](form[field]) }));
     }
-    setErrors(e);
-    setTouched(
-      Object.fromEntries(Object.keys(validators).map((k) => [k, true])),
-    );
-    return Object.keys(e).length === 0;
   };
 
+  // ── Payload ─────────────────────────────────────────────────────────────────
   const buildPayload = (extras: Record<string, any> = {}) => {
     const payload: Record<string, any> = {
       esAfiliado: form.esAfiliado ?? false,
       ...extras,
     };
     const campos = [
-      "nombre",
-      "apellidoPaterno",
-      "apellidoMaterno",
-      "fechaNacimiento",
-      "celular",
-      "correo",
-      "curp",
-      "rfc",
-      "calle",
-      "colonia",
-      "cp",
+      "nombre", "apellidoPaterno", "apellidoMaterno", "fechaNacimiento",
+      "celular", "correo", "curp", "rfc", "calle", "colonia", "cp",
     ];
     for (const campo of campos) {
-      if (
-        form[campo] !== null &&
-        form[campo] !== undefined &&
-        form[campo] !== ""
-      )
+      if (form[campo] !== null && form[campo] !== undefined && form[campo] !== "") {
         payload[campo] = form[campo];
+      }
     }
     if (form.empresaId) payload.empresaId = Number(form.empresaId);
     return payload;
   };
 
+  // ── Post-guardado ────────────────────────────────────────────────────────────
   const afterParticipante = (participante: any) => {
     if (cursoMode === "buscar" && cursoSeleccionado) {
       setInscripcionData({ participante, curso: cursoSeleccionado });
@@ -805,46 +608,40 @@ export default function ParticipanteModal({
     }
   };
 
+  // ── Submit ───────────────────────────────────────────────────────────────────
+  // Solo valida guards de flujo (cosas que el backend no puede conocer).
+  // La validación de campos (requeridos, formatos) la hace el backend con Zod
+  // y los errores se mapean a setErrors() para mostrarlos en los campos.
   const handleSubmit = async () => {
+    // Guards de flujo — exclusivos del frontend
     if (!empresaMode) {
       sileo.warning({
         title: "Sección Empresa incompleta",
-        description:
-          "Debes seleccionar una opción: Buscar empresa, Crear empresa o Asignar después.",
-          
+        description: "Debes seleccionar una opción: Buscar empresa, Crear empresa o Asignar después.",
       });
       return;
     }
-
-    // ← AGREGA ESTO: validar que si escogió "buscar" realmente seleccionó una empresa
     if (empresaMode === "buscar" && !form.empresaId) {
       sileo.warning({
         title: "Empresa no seleccionada",
-        description:
-          "Buscaste una empresa pero no seleccionaste ninguna. Selecciona una o elige 'Asignar después'.",
+        description: "Buscaste una empresa pero no seleccionaste ninguna. Selecciona una o elige 'Asignar después'.",
       });
       return;
     }
-
     if (!cursoMode) {
       sileo.warning({
         title: "Sección Curso incompleta",
-        description:
-          "Debes seleccionar una opción: Buscar curso o Inscribir después.",
+        description: "Debes seleccionar una opción: Buscar curso o Inscribir después.",
       });
       return;
     }
-
-    // ← AGREGA ESTO: validar que si escogió "buscar" realmente seleccionó un curso
     if (cursoMode === "buscar" && !cursoSeleccionado) {
       sileo.warning({
         title: "Curso no seleccionado",
-        description:
-          "Buscaste un curso pero no seleccionaste ninguno. Selecciona uno o elige 'Inscribir después'.",
+        description: "Buscaste un curso pero no seleccionaste ninguno. Selecciona uno o elige 'Inscribir después'.",
       });
       return;
     }
-
     if (empresaMode === "crear" && !empresaCreada) {
       sileo.warning({
         title: "Empresa sin crear",
@@ -852,21 +649,12 @@ export default function ParticipanteModal({
       });
       return;
     }
-    if (!validateAll()) {
-      sileo.warning({
-        title: "Campos con errores",
-        description: "Revisa los campos marcados antes de continuar.",
-      });
-      return;
-    }
+
     setSubmitError(null);
     setIsSubmitting(true);
     try {
       if (participanteToEdit) {
-        const response = await actualizarParticipante(
-          participanteToEdit.id,
-          buildPayload(),
-        );
+        const response = await actualizarParticipante(participanteToEdit.id, buildPayload());
         sileo.success({
           title: "¡Actualizado!",
           description: "El participante fue actualizado correctamente.",
@@ -884,19 +672,32 @@ export default function ParticipanteModal({
     } catch (err: any) {
       const status = err?.response?.status;
       const data = err?.response?.data;
+
+      // Duplicado detectado por el backend
       if (status === 409 && data?.code === "PARTICIPANTE_DUPLICADO") {
         setDuplicadoDetectado(data.data);
         return;
       }
-      const msg =
-        data?.message ??
-        data?.error ??
-        data ??
-        err?.message ??
-        "Error desconocido";
-      setSubmitError(
-        typeof msg === "string" ? msg : JSON.stringify(msg, null, 2),
-      );
+
+      // Errores de validación Zod del backend → mapear a campos
+      // El middleware devuelve: { details: [{ field: "nombre", message: "..." }] }
+      if (status === 400 && Array.isArray(data?.details)) {
+        const backendErrors: Record<string, string> = {};
+        for (const e of data.details) {
+          if (e.field) backendErrors[e.field] = e.message;
+        }
+        setErrors(backendErrors);
+        setTouched(Object.fromEntries(Object.keys(backendErrors).map((k) => [k, true])));
+        sileo.warning({
+          title: "Datos inválidos",
+          description: "Revisa los campos marcados antes de continuar.",
+        });
+        return;
+      }
+
+      // Error genérico
+      const msg = data?.message ?? data?.error ?? err?.message ?? "Error desconocido";
+      setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg, null, 2));
       sileo.error({
         title: "Error al registrar",
         description: "Revisa los datos e inténtalo de nuevo.",
@@ -906,6 +707,7 @@ export default function ParticipanteModal({
     }
   };
 
+  // ── Duplicado: usar existente / forzar creación ───────────────────────────
   const handleUsarExistente = () => {
     const p = duplicadoDetectado;
     setDuplicadoDetectado(null);
@@ -927,11 +729,8 @@ export default function ParticipanteModal({
       });
       afterParticipante(response.data || response);
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ?? err?.message ?? "Error desconocido";
-      setSubmitError(
-        typeof msg === "string" ? msg : "Error al crear participante",
-      );
+      const msg = err?.response?.data?.message ?? err?.message ?? "Error desconocido";
+      setSubmitError(typeof msg === "string" ? msg : "Error al crear participante");
       sileo.error({
         title: "Error al registrar",
         description: "Revisa los datos e inténtalo de nuevo.",
@@ -941,15 +740,7 @@ export default function ParticipanteModal({
     }
   };
 
-  const filled = REQUIRED_FIELDS.filter(
-    (f) => form[f] != null && form[f] !== "",
-  ).length;
-  const extraRequired = form.esAfiliado ? 1 : 0;
-  const extraFilled = form.esAfiliado && form.empresaId ? 1 : 0;
-  const pct = Math.round(
-    ((filled + extraFilled) / (REQUIRED_FIELDS.length + extraRequired)) * 100,
-  );
-
+  // ── Estilos reutilizables ─────────────────────────────────────────────────
   const inputCN = {
     inputWrapper: [
       "border border-slate-200 dark:border-slate-700",
@@ -961,17 +752,12 @@ export default function ParticipanteModal({
       "data-[invalid=true]:border-rose-400 data-[invalid=true]:bg-rose-50/30 dark:data-[invalid=true]:bg-rose-900/20",
     ].join(" "),
     label: "text-slate-500 dark:text-slate-400 text-xs font-medium",
-    input:
-      "text-slate-800 dark:text-slate-100 text-sm font-medium placeholder:text-slate-300 dark:placeholder:text-slate-600",
+    input: "text-slate-800 dark:text-slate-100 text-sm font-medium placeholder:text-slate-300 dark:placeholder:text-slate-600",
     errorMessage: "text-rose-500 text-[11px] font-medium mt-1",
   };
 
-  const inp = (
-    field: string,
-    label: string,
-    required = false,
-    extra: any = {},
-  ) => ({
+  /** Genera props comunes para cada <Input> */
+  const inp = (field: string, label: string, required = false, extra: any = {}) => ({
     label: (<RequiredLabel label={label} required={required} />) as any,
     size: "sm" as const,
     variant: "bordered" as const,
@@ -979,16 +765,14 @@ export default function ParticipanteModal({
     isInvalid: !!(touched[field] && errors[field]),
     errorMessage: touched[field] ? (errors[field] ?? undefined) : undefined,
     onBlur: () => handleBlur(field),
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-      handleChange(field, e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(field, e.target.value),
     classNames: inputCN,
     ...extra,
   });
 
   const acCN = {
     base: "w-full",
-    listboxWrapper:
-      "shadow-2xl rounded-2xl border border-slate-100 overflow-hidden",
+    listboxWrapper: "shadow-2xl rounded-2xl border border-slate-100 overflow-hidden",
     selectorButton: "text-slate-400 hover:text-indigo-500 transition-colors",
   };
   const acInp = {
@@ -1007,40 +791,33 @@ export default function ParticipanteModal({
     },
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <ModalForm
         isOpen={isOpen}
         onClose={onClose}
-        title={
-          participanteToEdit ? "Editar Participante" : "Nuevo Participante"
-        }
+        title={participanteToEdit ? "Editar Participante" : "Nuevo Participante"}
         size="3xl"
         isLoading={isSubmitting}
         onSubmit={handleSubmit}
-        submitText={
-          participanteToEdit ? "Actualizar participante" : "Crear participante"
-        }
+        submitText={participanteToEdit ? "Actualizar participante" : "Crear participante"}
       >
         <div className="space-y-6 px-1">
-          {/* Error servidor */}
+
+          {/* Banner de error del servidor */}
           {submitError && (
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200">
               <span className="text-rose-500 flex-shrink-0 mt-0.5">
                 <Ic.AlertCircle />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-rose-700">
-                  Error del servidor
-                </p>
+                <p className="text-sm font-semibold text-rose-700">Error del servidor</p>
                 <pre className="text-xs text-rose-600 mt-0.5 whitespace-pre-wrap break-words font-mono">
                   {submitError}
                 </pre>
               </div>
-              <button
-                onClick={() => setSubmitError(null)}
-                className="text-rose-400 hover:text-rose-600"
-              >
+              <button onClick={() => setSubmitError(null)} className="text-rose-400 hover:text-rose-600">
                 <Ic.X />
               </button>
             </div>
@@ -1060,43 +837,27 @@ export default function ParticipanteModal({
               <Input
                 {...inp("apellidoPaterno", "Apellido Paterno", true)}
                 value={form.apellidoPaterno ?? ""}
-                endContent={
-                  <FieldOk
-                    ok={!!form.apellidoPaterno && !errors.apellidoPaterno}
-                  />
-                }
+                endContent={<FieldOk ok={!!form.apellidoPaterno && !errors.apellidoPaterno} />}
               />
               <Input
                 {...inp("apellidoMaterno", "Apellido Materno")}
                 value={form.apellidoMaterno ?? ""}
               />
               <DatePicker
-                label={<RequiredLabel label="Fecha de Nacimiento" required />}
+                label={(<RequiredLabel label="Fecha de Nacimiento" required />) as any}
                 size="sm"
                 variant="bordered"
                 radius="lg"
-                value={
-                  form.fechaNacimiento ? parseDate(form.fechaNacimiento) : null
-                }
+                value={form.fechaNacimiento ? parseDate(form.fechaNacimiento) : null}
                 onChange={(date: CalendarDate | null) => {
-                  handleChange(
-                    "fechaNacimiento",
-                    date ? date.toString() : null,
-                  );
+                  handleChange("fechaNacimiento", date ? date.toString() : null);
                   setTouched((p) => ({ ...p, fechaNacimiento: true }));
                 }}
-                isInvalid={
-                  !!(touched.fechaNacimiento && errors.fechaNacimiento)
-                }
-                errorMessage={
-                  touched.fechaNacimiento ? errors.fechaNacimiento : undefined
-                }
+                isInvalid={!!(touched.fechaNacimiento && errors.fechaNacimiento)}
+                errorMessage={touched.fechaNacimiento ? errors.fechaNacimiento : undefined}
                 showMonthAndYearPickers
                 granularity="day"
-                dateInput={{
-                  locale: "es-MX",
-                  inputProps: { placeholder: "dd/mm/aaaa" },
-                }}
+                dateInput={{ locale: "es-MX", inputProps: { placeholder: "dd/mm/aaaa" } }}
                 classNames={{ ...inputCN, selectorButton: "text-danger" }}
                 maxValue={parseDate(new Date().toISOString().split("T")[0])}
               />
@@ -1106,32 +867,26 @@ export default function ParticipanteModal({
                 maxLength={10}
                 type="tel"
                 description="10 dígitos"
-                endContent={
-                  form.celular && !errors.celular ? <FieldOk ok /> : null
-                }
+                endContent={form.celular && !errors.celular ? <FieldOk ok /> : null}
               />
               <Input
                 {...inp("correo", "Correo electrónico")}
                 value={form.correo ?? ""}
                 type="email"
-                endContent={
-                  form.correo && !errors.correo ? <FieldOk ok /> : null
-                }
+                endContent={form.correo && !errors.correo ? <FieldOk ok /> : null}
               />
             </div>
+
+            {/* Toggle afiliado */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50/80 to-blue-50/60 border border-indigo-100/60">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white">
                   <Ic.Star />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">
-                    Participante Afiliado
-                  </p>
+                  <p className="text-sm font-semibold text-slate-700">Participante Afiliado</p>
                   <p className="text-[11px] text-slate-500">
-                    {form.esAfiliado
-                      ? "Requerirá seleccionar empresa"
-                      : "Actívalo si aplica"}
+                    {form.esAfiliado ? "Requerirá seleccionar empresa" : "Actívalo si aplica"}
                   </p>
                 </div>
               </div>
@@ -1148,9 +903,7 @@ export default function ParticipanteModal({
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Ic.MapPin /> Dirección{" "}
-              <span className="text-[10px] font-normal text-slate-400">
-                (opcional)
-              </span>
+              <span className="text-[10px] font-normal text-slate-400">(opcional)</span>
             </h3>
             <OptionalBanner text="Todos los campos de dirección son opcionales." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1158,17 +911,13 @@ export default function ParticipanteModal({
                 <Input
                   {...inp("calle", "Calle")}
                   value={form.calle ?? ""}
-                  endContent={
-                    form.calle && !errors.calle ? <FieldOk ok /> : null
-                  }
+                  endContent={form.calle && !errors.calle ? <FieldOk ok /> : null}
                 />
               </div>
               <Input
                 {...inp("colonia", "Colonia")}
                 value={form.colonia ?? ""}
-                endContent={
-                  form.colonia && !errors.colonia ? <FieldOk ok /> : null
-                }
+                endContent={form.colonia && !errors.colonia ? <FieldOk ok /> : null}
               />
               <Input
                 {...inp("cp", "Código Postal")}
@@ -1184,9 +933,7 @@ export default function ParticipanteModal({
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Ic.Receipt /> Datos fiscales{" "}
-              <span className="text-[10px] font-normal text-slate-400">
-                (opcional)
-              </span>
+              <span className="text-[10px] font-normal text-slate-400">(opcional)</span>
             </h3>
             <OptionalBanner text="CURP y RFC opcionales. Se validará el formato si los proporcionas." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1196,10 +943,7 @@ export default function ParticipanteModal({
                 description="18 caracteres"
                 maxLength={18}
                 onChange={(e) =>
-                  handleChange(
-                    "curp",
-                    e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
-                  )
+                  handleChange("curp", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
                 }
                 endContent={form.curp && !errors.curp ? <FieldOk ok /> : null}
               />
@@ -1209,10 +953,7 @@ export default function ParticipanteModal({
                 description="12-13 caracteres"
                 maxLength={13}
                 onChange={(e) =>
-                  handleChange(
-                    "rfc",
-                    e.target.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g, ""),
-                  )
+                  handleChange("rfc", e.target.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g, ""))
                 }
                 endContent={form.rfc && !errors.rfc ? <FieldOk ok /> : null}
               />
@@ -1235,6 +976,7 @@ export default function ParticipanteModal({
               )}
             </div>
             <Divider />
+
             {form.esAfiliado && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-3">
                 <ExclamationTriangleIcon className="w-4 h-4 text-warning-600 mt-0.5 shrink-0" />
@@ -1243,6 +985,7 @@ export default function ParticipanteModal({
                 </p>
               </div>
             )}
+
             {empresaCompleta && (
               <Card className="bg-primary-50/30 border border-primary-200">
                 <CardBody className="flex flex-row items-center gap-4">
@@ -1250,20 +993,17 @@ export default function ParticipanteModal({
                     <CurrencyDollarIcon className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {empresaCompleta.nombre}
-                    </p>
+                    <p className="text-sm font-medium">{empresaCompleta.nombre}</p>
                     <div className="flex gap-4 mt-1 text-xs">
                       <span className="text-primary-600">
-                        Saldo FECAP: $
-                        {empresaCompleta.saldoFecapDisponible?.toFixed(2) ??
-                          "0.00"}
+                        Saldo FECAP: ${empresaCompleta.saldoFecapDisponible?.toFixed(2) ?? "0.00"}
                       </span>
                     </div>
                   </div>
                 </CardBody>
               </Card>
             )}
+
             <div className="grid grid-cols-3 gap-3">
               <ModeCard
                 active={empresaMode === "buscar"}
@@ -1290,19 +1030,16 @@ export default function ParticipanteModal({
                 onPress={() => handleEmpresaMode("despues")}
               />
             </div>
+
             {empresaMode === "buscar" && (
               <div className="mt-3">
                 {empresaSeleccionada && form.empresaId ? (
                   <div className="flex items-center gap-3 rounded-xl bg-success-50 border border-success-200 p-4">
                     <CheckCircleIcon className="w-5 h-5 text-success-600 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm text-success-700 font-semibold">
-                        {empresaSeleccionada.nombre}
-                      </p>
+                      <p className="text-sm text-success-700 font-semibold">{empresaSeleccionada.nombre}</p>
                       {empresaSeleccionada.rfc && (
-                        <p className="text-xs text-success-600 mt-0.5">
-                          RFC: {empresaSeleccionada.rfc}
-                        </p>
+                        <p className="text-xs text-success-600 mt-0.5">RFC: {empresaSeleccionada.rfc}</p>
                       )}
                     </div>
                     <Button
@@ -1322,24 +1059,13 @@ export default function ParticipanteModal({
                   </div>
                 ) : (
                   <Autocomplete
-                    label={
-                      (
-                        <RequiredLabel
-                          label="Buscar empresa"
-                          required={form.esAfiliado}
-                        />
-                      ) as any
-                    }
+                    label={(<RequiredLabel label="Buscar empresa" required={form.esAfiliado} />) as any}
                     size="sm"
                     variant="bordered"
                     radius="lg"
                     inputValue={empresaSearch}
                     isInvalid={!!(touched.empresaId && errors.empresaId)}
-                    errorMessage={
-                      touched.empresaId
-                        ? (errors.empresaId ?? undefined)
-                        : undefined
-                    }
+                    errorMessage={touched.empresaId ? (errors.empresaId ?? undefined) : undefined}
                     onInputChange={buscarEmpresasDebounced}
                     onSelectionChange={(key) => {
                       if (!key) {
@@ -1348,15 +1074,11 @@ export default function ParticipanteModal({
                         setEmpresaCompleta(null);
                         return;
                       }
-                      const found = empresas.find(
-                        (e) => String(e.id) === String(key),
-                      );
+                      const found = empresas.find((e) => String(e.id) === String(key));
                       if (found) {
                         handleChange("empresaId", Number(key));
                         setEmpresaSeleccionada(found);
-                        obtenerEmpresa(Number(key))
-                          .then(setEmpresaCompleta)
-                          .catch(console.error);
+                        obtenerEmpresa(Number(key)).then(setEmpresaCompleta).catch(console.error);
                       }
                       setTouched((p) => ({ ...p, empresaId: true }));
                     }}
@@ -1385,14 +1107,8 @@ export default function ParticipanteModal({
                             className="w-7 h-7 text-tiny bg-indigo-100 text-indigo-600 font-bold"
                           />
                           <div>
-                            <p className="text-sm font-semibold text-slate-700">
-                              {emp.nombre}
-                            </p>
-                            {emp.rfc && (
-                              <p className="text-[11px] text-slate-400">
-                                {emp.rfc}
-                              </p>
-                            )}
+                            <p className="text-sm font-semibold text-slate-700">{emp.nombre}</p>
+                            {emp.rfc && <p className="text-[11px] text-slate-400">{emp.rfc}</p>}
                           </div>
                         </div>
                       </AutocompleteItem>
@@ -1401,6 +1117,7 @@ export default function ParticipanteModal({
                 )}
               </div>
             )}
+
             {empresaMode === "crear" && (
               <div className="mt-3">
                 {empresaCreada ? (
@@ -1409,18 +1126,11 @@ export default function ParticipanteModal({
                     <div className="flex-1">
                       <p className="text-sm text-success-700 font-semibold">
                         {empresaCreada.nombre}
-                        <Chip
-                          size="sm"
-                          color="success"
-                          variant="flat"
-                          className="ml-2"
-                        >
+                        <Chip size="sm" color="success" variant="flat" className="ml-2">
                           Creada y asignada
                         </Chip>
                       </p>
-                      <p className="text-xs text-success-600 mt-0.5">
-                        RFC: {empresaCreada.rfc}
-                      </p>
+                      <p className="text-xs text-success-600 mt-0.5">RFC: {empresaCreada.rfc}</p>
                     </div>
                     <Button
                       size="sm"
@@ -1447,7 +1157,7 @@ export default function ParticipanteModal({
                       size="sm"
                       startContent={<PlusCircleIcon className="w-4 h-4" />}
                       onPress={() => {
-                        setOrigen("participante"); // ← context cambia el texto del modal
+                        setOrigen("participante");
                         setEmpresaModalOpen(true);
                       }}
                       className="w-full font-semibold"
@@ -1458,19 +1168,19 @@ export default function ParticipanteModal({
                 )}
               </div>
             )}
+
             {empresaMode === "despues" && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-warning-700">
-                    Empresa pendiente
-                  </p>
+                  <p className="text-sm font-medium text-warning-700">Empresa pendiente</p>
                   <p className="text-xs text-warning-600 mt-1">
                     El participante se guardará sin empresa.
                   </p>
                 </div>
               </div>
             )}
+
             {!empresaMode && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200">
                 <ExclamationTriangleIcon className="w-4 h-4 text-rose-500 shrink-0" />
@@ -1478,7 +1188,7 @@ export default function ParticipanteModal({
                   Debes seleccionar una opción para continuar
                 </p>
               </div>
-            )}{" "}
+            )}
           </div>
 
           {/* ══ 5. CURSO ══ */}
@@ -1491,6 +1201,7 @@ export default function ParticipanteModal({
               </Chip>
             </div>
             <Divider />
+
             <div className="grid grid-cols-2 gap-3">
               <ModeCard
                 active={cursoMode === "buscar"}
@@ -1509,15 +1220,14 @@ export default function ParticipanteModal({
                 onPress={() => handleCursoMode("despues")}
               />
             </div>
+
             {cursoMode === "buscar" && (
               <div className="mt-3">
                 {cursoSeleccionado && form.cursoId ? (
                   <div className="flex items-center gap-3 rounded-xl bg-success-50 border border-success-200 p-4">
                     <CheckCircleIcon className="w-5 h-5 text-success-600 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm text-success-700 font-semibold">
-                        {cursoSeleccionado.nombre}
-                      </p>
+                      <p className="text-sm text-success-700 font-semibold">{cursoSeleccionado.nombre}</p>
                       {cursoSeleccionado.instructor && (
                         <p className="text-xs text-success-600 mt-0.5">
                           {cursoSeleccionado.instructor?.nombre}{" "}
@@ -1553,9 +1263,7 @@ export default function ParticipanteModal({
                         setCursoSeleccionado(null);
                         return;
                       }
-                      const found = cursos.find(
-                        (c) => String(c.id) === String(key),
-                      );
+                      const found = cursos.find((c) => String(c.id) === String(key));
                       if (found) {
                         handleChange("cursoId", Number(key));
                         setCursoSeleccionado(found);
@@ -1580,35 +1288,20 @@ export default function ParticipanteModal({
                     {cursos.map((curso) => (
                       <AutocompleteItem key={curso.id} textValue={curso.nombre}>
                         <div className="py-0.5">
-                          <p className="text-sm font-semibold text-slate-700">
-                            {curso.nombre}
-                          </p>
+                          <p className="text-sm font-semibold text-slate-700">{curso.nombre}</p>
                           <div className="flex items-center gap-3 mt-0.5">
                             <p className="text-[11px] text-slate-400">
-                              {new Date(curso.fechaInicio).toLocaleDateString(
-                                "es-MX",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  timeZone: "UTC",
-                                },
-                              )}
+                              {new Date(curso.fechaInicio).toLocaleDateString("es-MX", {
+                                day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+                              })}
                               {" → "}
-                              {new Date(curso.fechaFin).toLocaleDateString(
-                                "es-MX",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  timeZone: "UTC",
-                                },
-                              )}
+                              {new Date(curso.fechaFin).toLocaleDateString("es-MX", {
+                                day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+                              })}
                             </p>
                             {curso.instructor && (
                               <p className="text-[11px] text-slate-400">
-                                · {curso.instructor.nombre}{" "}
-                                {curso.instructor.apellidoPaterno}
+                                · {curso.instructor.nombre} {curso.instructor.apellidoPaterno}
                               </p>
                             )}
                           </div>
@@ -1619,20 +1312,19 @@ export default function ParticipanteModal({
                 )}
               </div>
             )}
+
             {cursoMode === "despues" && (
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-warning-700">
-                    Inscripción pendiente
-                  </p>
+                  <p className="text-sm font-medium text-warning-700">Inscripción pendiente</p>
                   <p className="text-xs text-warning-600 mt-1">
-                    El participante se guardará sin curso. Puedes inscribirlo
-                    después.
+                    El participante se guardará sin curso. Puedes inscribirlo después.
                   </p>
                 </div>
               </div>
             )}
+
             {!cursoMode && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200">
                 <ExclamationTriangleIcon className="w-4 h-4 text-rose-500 shrink-0" />
@@ -1640,8 +1332,9 @@ export default function ParticipanteModal({
                   Debes seleccionar una opción para continuar
                 </p>
               </div>
-            )}{" "}
+            )}
           </div>
+
         </div>
       </ModalForm>
 
