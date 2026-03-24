@@ -123,16 +123,16 @@ type CursoMode = "buscar" | "despues" | null;
 // La validación autoritativa vive en el backend (Zod).
 // Estos hints muestran feedback mientras el usuario escribe.
 const validators: Record<string, (v: any) => string | null> = {
-  nombre:          (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
+  nombre: (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
   apellidoPaterno: (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
   apellidoMaterno: (v) => v && v.trim().length < 2 ? "Mínimo 2 caracteres" : null,
-  celular:         (v) => v && !/^[0-9]{10}$/.test(v) ? "10 dígitos" : null,
-  correo:          (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Formato inválido" : null,
-  curp:            (v) => v && !/^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(v) ? "18 caracteres · formato CURP" : null,
-  rfc:             (v) => v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v) ? "12-13 caracteres · formato RFC" : null,
-  cp:              (v) => v && !/^\d{5}$/.test(v) ? "5 dígitos" : null,
+  celular: (v) => v && !/^[0-9]{10}$/.test(v) ? "10 dígitos" : null,
+  correo: (v) => v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Formato inválido" : null,
+  curp: (v) => v && !/^[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(v) ? "18 caracteres · formato CURP" : null,
+  rfc: (v) => v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v) ? "12-13 caracteres · formato RFC" : null,
+  cp: (v) => v && !/^\d{5}$/.test(v) ? "5 dígitos" : null,
   fechaNacimiento: () => null, // el DatePicker ya restringe
-  empresaId:       () => null, // se valida con guards de flujo
+  empresaId: () => null, // se valida con guards de flujo
 };
 
 // ── Componentes auxiliares ────────────────────────────────────────────────────
@@ -200,9 +200,8 @@ function ModeCard({
     <Card
       isPressable
       onPress={onPress}
-      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
-        active ? activeClass : "border-default-200 hover:border-default-400 hover:shadow-md"
-      }`}
+      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${active ? activeClass : "border-default-200 hover:border-default-400 hover:shadow-md"
+        }`}
     >
       <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
         <div className={`p-2 rounded-full ${active ? `bg-${color}/10` : "bg-default-100"}`}>
@@ -617,7 +616,7 @@ export default function ParticipanteModal({
     if (!empresaMode) {
       sileo.warning({
         title: "Sección Empresa incompleta",
-        description: "Debes seleccionar una opción: Buscar empresa, Crear empresa o Asignar después.",
+        description: "Debes seleccionar una opción: Buscar empresa, Crear empresa o Sin empresa.",
       });
       return;
     }
@@ -1025,8 +1024,8 @@ export default function ParticipanteModal({
                 active={empresaMode === "despues"}
                 color="warning"
                 icon={<ClockIcon className="w-6 h-6" />}
-                label="Asignar después"
-                description="Pendiente"
+                label="Sin empresa"          // antes: "Asignar después"
+                description="No aplica"      // antes: "Pendiente"
                 onPress={() => handleEmpresaMode("despues")}
               />
             </div>
@@ -1173,9 +1172,9 @@ export default function ParticipanteModal({
               <div className="flex items-start gap-3 rounded-xl bg-warning-50 border border-warning-200 p-4 mt-3">
                 <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-warning-700">Empresa pendiente</p>
+                  <p className="text-sm font-medium text-warning-700">Sin empresa</p>   {/* antes: "Empresa pendiente" */}
                   <p className="text-xs text-warning-600 mt-1">
-                    El participante se guardará sin empresa.
+                    El participante se guardará sin empresa asociada.   {/* antes: "El participante se guardará sin empresa." */}
                   </p>
                 </div>
               </div>

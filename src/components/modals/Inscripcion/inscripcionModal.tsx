@@ -34,25 +34,25 @@ import {
 // VENTA_AFILIADO y VENTA_PUBLICO se eliminan — el tipo de precio ya los cubre.
 // FECAP solo aparece si el participante tiene empresa asignada con saldo > 0.
 const METODOS_PAGO = [
-  { key: "EFECTIVO",        label: "Efectivo",           icon: "💵", requiereEmpresa: false },
-  { key: "TRANSFERENCIA",   label: "Transferencia",      icon: "🏦", requiereEmpresa: false },
-  { key: "FECAP",           label: "Fondo FECAP",        icon: "🏗️", requiereEmpresa: true  },
-  { key: "FINANCIAMIENTO",  label: "Financiamiento",     icon: "📆", requiereEmpresa: false },
-  { key: "SIN_COSTO",       label: "Sin Costo",          icon: "🎁", requiereEmpresa: false },
+  { key: "EFECTIVO", label: "Efectivo", icon: "💵", requiereEmpresa: false },
+  { key: "TRANSFERENCIA", label: "Transferencia", icon: "🏦", requiereEmpresa: false },
+  { key: "FECAP", label: "Fondo FECAP", icon: "🏗️", requiereEmpresa: true },
+  { key: "FINANCIAMIENTO", label: "Financiamiento", icon: "📆", requiereEmpresa: false },
+  { key: "SIN_COSTO", label: "Sin Costo", icon: "🎁", requiereEmpresa: false },
   { key: "VALE_AFILIACION", label: "Vale de Afiliación", icon: "🎫", requiereEmpresa: false },
 ] as const;
 
 const ESTADO_PAGO = [
-  { key: "PENDIENTE",   label: "Pendiente"   },
-  { key: "PAGADO",      label: "Pagado"      },
-  { key: "CANCELADO",   label: "Cancelado"   },
+  { key: "PENDIENTE", label: "Pendiente" },
+  { key: "PAGADO", label: "Pagado" },
+  { key: "CANCELADO", label: "Cancelado" },
   { key: "REEMBOLSADO", label: "Reembolsado" },
 ] as const;
 
 const PERIODICIDAD = [
-  { key: "SEMANAL",   label: "Semanal"   },
+  { key: "SEMANAL", label: "Semanal" },
   { key: "QUINCENAL", label: "Quincenal" },
-  { key: "MENSUAL",   label: "Mensual"   },
+  { key: "MENSUAL", label: "Mensual" },
 ] as const;
 
 // ──────────────────────────────────────────────
@@ -80,10 +80,10 @@ function fmt(n: number | null | undefined) {
 function getPrecioCurso(curso: any, tipoPrecio: string): number {
   if (!curso) return 0;
   switch (tipoPrecio) {
-    case "AFILIADO":        return curso.precioAfiliado   ?? 0;
-    case "PUBLICO_GENERAL": return curso.precioPublico    ?? 0;
-    case "ESTUDIANTE":      return curso.precioEstudiante ?? 0;
-    default:                return 0;
+    case "AFILIADO": return curso.precioAfiliado ?? 0;
+    case "PUBLICO_GENERAL": return curso.precioPublico ?? 0;
+    case "ESTUDIANTE": return curso.precioEstudiante ?? 0;
+    default: return 0;
   }
 }
 
@@ -122,12 +122,11 @@ function MontoResumen({
             {row.label}
           </span>
           <span
-            className={`text-sm font-bold ${
-              row.color ||
-              (row.negativo  ? "text-danger-600"  :
-               row.destacado ? "text-primary-600" :
-                               "text-default-700")
-            }`}
+            className={`text-sm font-bold ${row.color ||
+              (row.negativo ? "text-danger-600" :
+                row.destacado ? "text-primary-600" :
+                  "text-default-700")
+              }`}
           >
             {row.negativo ? "-" : ""}${fmt(row.valor)}
           </span>
@@ -155,36 +154,36 @@ export default function InscripcionModal({
     if (inscripcionToEdit) {
       return {
         ...inscripcionToEdit,
-        fechaPago:       inscripcionToEdit.fechaPago?.split("T")[0]       || null,
+        fechaPago: inscripcionToEdit.fechaPago?.split("T")[0] || null,
         fechaPrimerPago: inscripcionToEdit.fechaPrimerPago?.split("T")[0] || null,
       };
     }
     return {
-      cursoId:            curso?.id        || null,
-      participanteId:     participante?.id  || null,
-      estadoPago:         "PENDIENTE",
+      cursoId: curso?.id || null,
+      participanteId: participante?.id || null,
+      estadoPago: "PENDIENTE",
       // Precio inicial según afiliación
       tipoPrecioAplicado: participante?.esAfiliado ? "AFILIADO" : "PUBLICO_GENERAL",
       // Método por defecto: Efectivo (VENTA_* eliminados)
-      metodoPago:         "EFECTIVO",
-      montoEsperado:      0,
-      montoPagado:        null,
-      montoDescuento:     0,
-      montoFinal:         0,
-      tieneVale:          false,
-      codigoVale:         null,
-      fechaPago:          null,
-      notas:              "",
-      numeroPagos:        null,
-      periodicidad:       null,
-      fechaPrimerPago:    null,
+      metodoPago: "EFECTIVO",
+      montoEsperado: 0,
+      montoPagado: null,
+      montoDescuento: 0,
+      montoFinal: 0,
+      tieneVale: false,
+      codigoVale: null,
+      fechaPago: null,
+      notas: "",
+      numeroPagos: null,
+      periodicidad: null,
+      fechaPrimerPago: null,
     };
   });
 
-  const [cursoData,    setCursoData]   = useState<any>(curso       || null);
-  const [empresaData,  setEmpresaData] = useState<any>(empresaProp || null);
+  const [cursoData, setCursoData] = useState<any>(curso || null);
+  const [empresaData, setEmpresaData] = useState<any>(empresaProp || null);
   // Saldo FECAP fresco desde la API (más preciso que el dato de empresaProp)
-  const [saldoFecap,   setSaldoFecap]  = useState<{ disponible: number; aplicado: number } | null>(null);
+  const [saldoFecap, setSaldoFecap] = useState<{ disponible: number; aplicado: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cargar curso si no viene como prop
@@ -211,7 +210,7 @@ export default function InscripcionModal({
         .then((data) =>
           setSaldoFecap({
             disponible: data.saldoFecapDisponible ?? 0,
-            aplicado:   data.saldoFecapAplicado   ?? 0,
+            aplicado: data.saldoFecapAplicado ?? 0,
           }),
         )
         .catch(console.error);
@@ -252,16 +251,16 @@ export default function InscripcionModal({
   // Resumen de saldo para el panel FECAP
   const saldoInfo = useMemo(() => {
     if (form.metodoPago !== "FECAP") return null;
-    const fuente     = saldoFecap ?? {
+    const fuente = saldoFecap ?? {
       disponible: empresaData?.saldoFecapDisponible ?? 0,
-      aplicado:   empresaData?.saldoFecapAplicado   ?? 0,
+      aplicado: empresaData?.saldoFecapAplicado ?? 0,
     };
     const costo = form.montoFinal ?? 0;
     return {
       disponible: fuente.disponible,
-      aplicado:   fuente.aplicado,
+      aplicado: fuente.aplicado,
       costo,
-      restante:   Math.max(0, fuente.disponible - costo),
+      restante: Math.max(0, fuente.disponible - costo),
       suficiente: fuente.disponible >= costo,
     };
   }, [form.metodoPago, form.montoFinal, saldoFecap, empresaData]);
@@ -286,7 +285,7 @@ export default function InscripcionModal({
       setForm((prev: any) => ({
         ...prev,
         montoEsperado: precioBase,
-        montoFinal:    Math.max(0, precioBase - (prev.montoDescuento || 0)),
+        montoFinal: Math.max(0, precioBase - (prev.montoDescuento || 0)),
       }));
       return;
     }
@@ -294,9 +293,9 @@ export default function InscripcionModal({
     // Efectivo, Transferencia, FECAP, Financiamiento → precio limpio sin descuento
     setForm((prev: any) => ({
       ...prev,
-      montoEsperado:  precioBase,
+      montoEsperado: precioBase,
       montoDescuento: 0,
-      montoFinal:     precioBase,
+      montoFinal: precioBase,
     }));
   }, [form.metodoPago, form.tipoPrecioAplicado, cursoData]);
 
@@ -316,7 +315,7 @@ export default function InscripcionModal({
     setForm((prev: any) => ({
       ...prev,
       montoDescuento: descuento,
-      montoFinal:     Math.max(0, precioBase - descuento),
+      montoFinal: Math.max(0, precioBase - descuento),
     }));
   };
 
@@ -394,27 +393,27 @@ export default function InscripcionModal({
     setIsSubmitting(true);
     try {
       const payload: any = {
-        participanteId:     participante.id,
-        cursoId:            cursoData.id,
+        participanteId: participante.id,
+        cursoId: cursoData.id,
         tipoPrecioAplicado: form.tipoPrecioAplicado,
-        metodoPago:         form.metodoPago,
-        montoEsperado:      form.montoEsperado,
-        montoFinal:         form.montoFinal,
-        montoDescuento:     form.montoDescuento || 0,
-        estadoPago:         form.estadoPago,
-        notas:              form.notas || "",
+        metodoPago: form.metodoPago,
+        montoEsperado: form.montoEsperado,
+        montoFinal: form.montoFinal,
+        montoDescuento: form.montoDescuento || 0,
+        estadoPago: form.estadoPago,
+        notas: form.notas || "",
       };
 
-      if (form.montoPagado)    payload.montoPagado   = form.montoPagado;
-      if (form.codigoVale)     payload.codigoVale    = form.codigoVale;
-      if (form.tieneVale)      payload.tieneVale     = true;
-      if (form.fechaPago)      payload.fechaPago     = form.fechaPago;
+      if (form.montoPagado) payload.montoPagado = form.montoPagado;
+      if (form.codigoVale) payload.codigoVale = form.codigoVale;
+      if (form.tieneVale) payload.tieneVale = true;
+      if (form.fechaPago) payload.fechaPago = form.fechaPago;
 
       if (form.metodoPago === "FINANCIAMIENTO") {
         payload.esFinanciamiento = true;
-        payload.numeroPagos      = form.numeroPagos;
-        payload.periodicidad     = form.periodicidad;
-        payload.montoPorPago     = montoPorPago;
+        payload.numeroPagos = form.numeroPagos;
+        payload.periodicidad = form.periodicidad;
+        payload.montoPorPago = montoPorPago;
         if (form.fechaPrimerPago) payload.fechaPrimerPago = form.fechaPrimerPago;
       }
 
@@ -498,9 +497,9 @@ export default function InscripcionModal({
             </p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Afiliado",        precio: cursoData.precioAfiliado,   tipo: "AFILIADO"        },
-                { label: "Público General", precio: cursoData.precioPublico,    tipo: "PUBLICO_GENERAL" },
-                { label: "Estudiante",      precio: cursoData.precioEstudiante, tipo: "ESTUDIANTE"      },
+                { label: "Afiliado", precio: cursoData.precioAfiliado, tipo: "AFILIADO" },
+                { label: "Público General", precio: cursoData.precioPublico, tipo: "PUBLICO_GENERAL" },
+                { label: "Estudiante", precio: cursoData.precioEstudiante, tipo: "ESTUDIANTE" },
               ].map(({ label, precio, tipo }) => (
                 <button
                   key={tipo}
@@ -630,11 +629,10 @@ export default function InscripcionModal({
 
             {saldoInfo ? (
               <Card
-                className={`border-2 ${
-                  saldoInfo.suficiente
+                className={`border-2 ${saldoInfo.suficiente
                     ? "border-success-300 bg-success-50/30"
                     : "border-danger-300 bg-danger-50/30"
-                }`}
+                  }`}
               >
                 <CardBody className="py-3 px-4 space-y-3">
                   {/* Tres celdas: Disponible / A aplicar / Restante */}
@@ -660,11 +658,13 @@ export default function InscripcionModal({
 
                   <MontoResumen
                     rows={[
-                      { label: "Saldo disponible",            valor: saldoInfo.disponible                                                           },
-                      { label: "Costo del curso",             valor: saldoInfo.costo,      negativo: true                                           },
-                      { label: "Saldo restante tras el pago", valor: saldoInfo.restante,
+                      { label: "Saldo disponible", valor: saldoInfo.disponible },
+                      { label: "Costo del curso", valor: saldoInfo.costo, negativo: true },
+                      {
+                        label: "Saldo restante tras el pago", valor: saldoInfo.restante,
                         color: saldoInfo.suficiente ? "text-success-600" : "text-danger-600",
-                        destacado: true                                                                                                               },
+                        destacado: true
+                      },
                     ]}
                   />
 
@@ -773,9 +773,9 @@ export default function InscripcionModal({
             </div>
             <MontoResumen
               rows={[
-                { label: "Precio del curso",   valor: form.montoEsperado                  },
-                { label: "Descuento del vale", valor: form.montoDescuento, negativo: true  },
-                { label: "Total a pagar",      valor: form.montoFinal,     destacado: true },
+                { label: "Precio del curso", valor: form.montoEsperado },
+                { label: "Descuento del vale", valor: form.montoDescuento, negativo: true },
+                { label: "Total a pagar", valor: form.montoFinal, destacado: true },
               ]}
             />
           </div>
