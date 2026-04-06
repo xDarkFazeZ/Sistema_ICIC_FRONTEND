@@ -95,7 +95,7 @@ export default function Login() {
               />
             </div>
             <img
-              src="images/logo.png"
+              src="images/logoICIC.png"
               className="w-48 relative z-10 drop-shadow-2xl animate-in fade-in zoom-in duration-1000"
               alt="ICIC Logo"
             />
@@ -164,7 +164,7 @@ export default function Login() {
                 <div className="relative inline-block mb-4">
                   <div className="absolute inset-0 blur-lg opacity-20">
                     <img
-                      src="images/logo.png"
+                      src="images/logoICIC.png"
                       className="w-20"
                       alt="ICIC Logo blur"
                     />
