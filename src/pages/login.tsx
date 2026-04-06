@@ -170,7 +170,7 @@ export default function Login() {
                     />
                   </div>
                   <img
-                    src="images/logo.png"
+                    src="images/logoICIC.png"
                     className="w-20 relative z-10 mx-auto drop-shadow-lg"
                     alt="ICIC Logo"
                   />
