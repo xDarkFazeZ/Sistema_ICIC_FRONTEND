@@ -1,11 +1,13 @@
+// El mismo código que antes, pero asegurando que los datos del curso se pasen correctamente
 import { useEffect, useState } from "react";
 import ModalForm from "../../common/modalForm";
-import { Card, CardBody, Chip, Divider, Spinner } from "@heroui/react";
+import { Card, CardBody, Chip, Divider, Spinner, Button } from "@heroui/react";
 import {
   BookOpen, User, CalendarDays, Clock,
   MapPin, GraduationCap, FileText, Users,
 } from "lucide-react";
 import { obtenerInscripcionesPorCurso } from "../../../services/inscripcionService";
+import { PDFDownloadButton } from "../../../components/pdf/PDFDownloadButton";
 
 interface CursoDetalleModalProps {
   isOpen: boolean;
@@ -14,24 +16,58 @@ interface CursoDetalleModalProps {
 }
 
 const estadoColor: Record<string, "success" | "warning" | "danger" | "default"> = {
-  PAGADO:      "success",
-  PENDIENTE:   "warning",
-  CANCELADO:   "danger",
+  PAGADO: "success",
+  PENDIENTE: "warning",
+  CANCELADO: "danger",
   REEMBOLSADO: "default",
 };
 
 export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetalleModalProps) {
   const [inscritos, setInscritos] = useState<any[]>([]);
   const [loadingInscritos, setLoadingInscritos] = useState(false);
+  const [cursoCompleto, setCursoCompleto] = useState<any>(null);
 
   useEffect(() => {
     if (!isOpen || !curso?.id) return;
-    setLoadingInscritos(true);
-    obtenerInscripcionesPorCurso(curso.id)
-      .then((res) => setInscritos(res.data ?? []))
-      .catch(console.error)
-      .finally(() => setLoadingInscritos(false));
-  }, [isOpen, curso?.id]);
+
+    const cargarDatosCompletos = async () => {
+      setLoadingInscritos(true);
+      try {
+        const inscripcionesRes = await obtenerInscripcionesPorCurso(curso.id);
+        const inscripciones = inscripcionesRes.data ?? [];
+        setInscritos(inscripciones);
+
+        // Construir objeto con SOLO los campos de la BD
+        const cursoConInscripciones = {
+          id: curso.id,
+          nombre: curso.nombre,
+          descripcion: curso.descripcion,
+          nivelGerencial: curso.nivelGerencial,
+          fechaInicio: curso.fechaInicio,
+          fechaFin: curso.fechaFin,
+          duracion: curso.duracion,
+          horario: curso.horario,
+          aula: curso.aula,
+          instructor: curso.instructor,
+          inscripciones: inscripciones.map((ins: any) => ({
+            ...ins,
+            participante: ins.participante,
+            empresa: ins.participante?.empresa || null,
+            metodoPago: ins.metodoPago,
+            montoFinal: ins.montoFinal,
+            montoEsperado: ins.montoEsperado,
+          }))
+        };
+        setCursoCompleto(cursoConInscripciones);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoadingInscritos(false);
+      }
+    };
+
+    cargarDatosCompletos();
+  }, [isOpen, curso]);
 
   if (!curso) return null;
 
@@ -45,12 +81,26 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <span>Detalle del Curso</span>
         </div>
       }
-      size="3xl"
-      hideFooter
+      size="4xl"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="light" onPress={onClose}>
+            Cerrar
+          </Button>
+          {cursoCompleto && (
+            <PDFDownloadButton
+              cursoData={cursoCompleto}
+              buttonText="Descargar Reporte PDF"
+              variant="solid"
+              color="primary"
+              onError={(error) => console.error('Error PDF:', error)}
+            />
+          )}
+        </div>
+      }
     >
       <div className="space-y-6">
-
-        {/* Nombre */}
+        {/* Resto del contenido igual... */}
         <Card shadow="sm">
           <CardBody className="flex gap-3">
             <BookOpen className="text-danger" />
@@ -61,7 +111,6 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           </CardBody>
         </Card>
 
-        {/* Descripción */}
         {curso.descripcion && (
           <Card shadow="sm">
             <CardBody className="flex gap-3">
@@ -76,7 +125,6 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
 
         <Divider />
 
-        {/* Info principal */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
@@ -151,7 +199,6 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           </Card>
         </div>
 
-        {/* Nivel gerencial */}
         <div className="flex items-center gap-3">
           <GraduationCap className="text-danger" />
           <div>
@@ -162,7 +209,6 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
 
         <Divider />
 
-        {/* ── Participantes inscritos ── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -220,7 +266,17 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
             </div>
           )}
         </div>
-
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-default-200">
+          {cursoCompleto && (
+            <PDFDownloadButton
+              cursoData={cursoCompleto}
+              buttonText="Descargar Reporte PDF"
+              variant="solid"
+              color="primary"
+              onError={(error) => console.error('Error PDF:', error)}
+            />
+          )}
+        </div>
       </div>
     </ModalForm>
   );

@@ -26,6 +26,7 @@ import ParticipanteDetalleModal from "../components/modals/Participante/particip
 import EstadoPagoModal from "../components/modals/Inscripcion/estadoPagoModal";
 
 import Sidebar from "../components/common/Sidebar";
+import { DashboardPDFButton } from "../components/pdf/DashboardPDFButton";
 
 // Importar servicios y componentes de gráficos
 import { dashboardService } from "../services/dashboardService";
@@ -187,14 +188,21 @@ export default function Dashboard() {
       {/* CONTENIDO PRINCIPAL - Dashboard */}
       <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
-          {/* Header con bienvenida */}
-          <div className="mb-8 animate-in fade-in slide-in-from-top duration-500">
-            <h1 className="text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-red-800 dark:from-red-500 dark:to-red-700 mb-2">
-              ¡Bienvenido, {user?.nombre}!
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Panel de control · {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+          {/* Header con bienvenida y botón PDF */}
+          <div className="mb-8">
+            <div className="flex justify-between items-start">
+              <div className="animate-in fade-in slide-in-from-top duration-500">
+                <h1 className="text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-red-800 dark:from-red-500 dark:to-red-700 mb-2">
+                  ¡Bienvenido, {user?.nombre}!
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Panel de control · {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              <div className="flex-shrink-0">
+                <DashboardPDFButton onError={(error) => console.error('Error PDF:', error)} />
+              </div>
+            </div>
           </div>
 
           {/* Acciones rápidas */}

@@ -100,7 +100,7 @@ export default function Sidebar() {
           </button>
           {drawerOpen && (
             <img
-              src="images/logo.png"
+              src="images/logoICIC.png"
               alt="Logo ICIC"
               className="ml-3 h-10 w-auto object-contain"
             />

@@ -47,3 +47,46 @@ export const actualizarCurso = async (id: number, data: any) => {
   const res = await apiClient.put(`/cursos/${id}`, data);
   return res.data.data;
 };
+
+export const obtenerCursoCompletoParaPDF = async (id: number) => {
+  try {
+    // 1. Obtener el curso con instructor
+    const curso = await obtenerCursoPorId(id);
+    
+    // 2. Obtener inscripciones con participantes y empresas
+    const inscripcionesRes = await apiClient.get("/inscripciones", {
+      params: { cursoId: id }
+    });
+    
+    const inscripciones = inscripcionesRes.data.data || [];
+    
+    // 3. Para cada inscripción, obtener datos completos del participante y empresa
+    const participantesConDatos = await Promise.all(
+      inscripciones.map(async (inscripcion: any) => {
+        // Obtener participante con su empresa
+        const participanteRes = await apiClient.get(`/participantes/${inscripcion.participanteId}`);
+        const participante = participanteRes.data.data;
+        
+        let empresa = null;
+        if (participante.empresaId) {
+          const empresaRes = await apiClient.get(`/empresas/${participante.empresaId}`);
+          empresa = empresaRes.data.data;
+        }
+        
+        return {
+          ...inscripcion,
+          participante,
+          empresa
+        };
+      })
+    );
+    
+    return {
+      ...curso,
+      inscripciones: participantesConDatos
+    };
+  } catch (error) {
+    console.error('Error obteniendo curso completo:', error);
+    throw error;
+  }
+};
