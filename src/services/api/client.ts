@@ -6,7 +6,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,
+  // withCredentials: true,   ← quitar esto
 });
 
 // Interceptor para agregar token a las peticiones
