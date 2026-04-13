@@ -6,6 +6,11 @@ export interface InscripcionMes {
   total: number;
 }
 
+export interface IngresoPorMes {
+  mes: string;
+  total: number;
+}
+
 export interface DistribucionCurso {
   nombre: string;
   total: number;
@@ -55,9 +60,11 @@ export interface DashboardData {
   distribucionCursos: DistribucionCurso[];
   cursosConEstado: CursoEstado[];
   pagosPendientes: PagoPendiente[];
-  participantesSinPago: any[]; // Puedes tipar esto más específicamente si quieres
+  participantesSinPago: any[];
+  saldoFecapPorMes: any[];
+  horasHombrePorMes: any[];
+  ingresosPorMesEfectivoTransferencia: IngresoPorMes[]; // ← NUEVO
 }
-
 export const dashboardService = {
   async getDashboardData(): Promise<DashboardData> {
     try {
