@@ -25,14 +25,13 @@ import {
   TagIcon,
   GiftIcon,
   BanknotesIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 
 // ──────────────────────────────────────────────
 // Catálogos
 // ──────────────────────────────────────────────
 
-// VENTA_AFILIADO y VENTA_PUBLICO se eliminan — el tipo de precio ya los cubre.
-// FECAP solo aparece si el participante tiene empresa asignada con saldo > 0.
 const METODOS_PAGO = [
   { key: "EFECTIVO", label: "Efectivo", icon: "💵", requiereEmpresa: false },
   { key: "TRANSFERENCIA", label: "Transferencia", icon: "🏦", requiereEmpresa: false },
@@ -162,9 +161,7 @@ export default function InscripcionModal({
       cursoId: curso?.id || null,
       participanteId: participante?.id || null,
       estadoPago: "PENDIENTE",
-      // Precio inicial según afiliación
       tipoPrecioAplicado: participante?.esAfiliado ? "AFILIADO" : "PUBLICO_GENERAL",
-      // Método por defecto: Efectivo (VENTA_* eliminados)
       metodoPago: "EFECTIVO",
       montoEsperado: 0,
       montoPagado: null,
@@ -182,9 +179,11 @@ export default function InscripcionModal({
 
   const [cursoData, setCursoData] = useState<any>(curso || null);
   const [empresaData, setEmpresaData] = useState<any>(empresaProp || null);
-  // Saldo FECAP fresco desde la API (más preciso que el dato de empresaProp)
   const [saldoFecap, setSaldoFecap] = useState<{ disponible: number; aplicado: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Detectar si es modo "Sin Costo"
+  const isSinCosto = form.metodoPago === "SIN_COSTO";
 
   // Cargar curso si no viene como prop
   useEffect(() => {
@@ -219,6 +218,24 @@ export default function InscripcionModal({
     }
   }, [form.metodoPago, empresaData?.id]);
 
+  // ── Cuando se selecciona "Sin Costo", forzar estado PAGADO y limpiar campos ──
+  useEffect(() => {
+    if (isSinCosto) {
+      setForm((prev: any) => ({
+        ...prev,
+        estadoPago: "PAGADO",
+        montoEsperado: 0,
+        montoPagado: 0,
+        montoDescuento: 0,
+        montoFinal: 0,
+        numeroPagos: null,
+        periodicidad: null,
+        codigoVale: null,
+        tieneVale: false,
+      }));
+    }
+  }, [isSinCosto]);
+
   // ── Derivados ──────────────────────────────────────────────────────────────
 
   const metodo = useMemo(
@@ -231,24 +248,20 @@ export default function InscripcionModal({
     [cursoData, form.tipoPrecioAplicado],
   );
 
-  // FECAP habilitado solo si el participante tiene empresa asignada con saldo > 0
   const fecapDisponible =
     !!participante?.empresaId &&
     ((saldoFecap?.disponible ?? 0) > 0 || (empresaData?.saldoFecapDisponible ?? 0) > 0);
 
-  // Filtrar catálogo: FECAP solo si fecapDisponible
   const metodosFiltrados = METODOS_PAGO.filter((m) =>
     m.key === "FECAP" ? fecapDisponible : true,
   );
 
-  // Si el método activo quedó fuera del catálogo filtrado, resetear a EFECTIVO
   useEffect(() => {
     if (form.metodoPago === "FECAP" && !fecapDisponible) {
       setForm((prev: any) => ({ ...prev, metodoPago: "EFECTIVO" }));
     }
   }, [fecapDisponible]);
 
-  // Resumen de saldo para el panel FECAP
   const saldoInfo = useMemo(() => {
     if (form.metodoPago !== "FECAP") return null;
     const fuente = saldoFecap ?? {
@@ -265,7 +278,6 @@ export default function InscripcionModal({
     };
   }, [form.metodoPago, form.montoFinal, saldoFecap, empresaData]);
 
-  // Monto por cuota (financiamiento)
   const montoPorPago = useMemo(() => {
     if (form.metodoPago !== "FINANCIAMIENTO" || !form.numeroPagos || form.numeroPagos < 1) return 0;
     return (form.montoFinal ?? 0) / form.numeroPagos;
@@ -275,11 +287,9 @@ export default function InscripcionModal({
 
   useEffect(() => {
     if (!cursoData) return;
-
-    if (form.metodoPago === "SIN_COSTO") {
-      setForm((prev: any) => ({ ...prev, montoEsperado: 0, montoDescuento: 0, montoFinal: 0 }));
-      return;
-    }
+    
+    // Sin Costo: ya manejado por el useEffect específico
+    if (isSinCosto) return;
 
     if (form.metodoPago === "VALE_AFILIACION") {
       setForm((prev: any) => ({
@@ -290,14 +300,13 @@ export default function InscripcionModal({
       return;
     }
 
-    // Efectivo, Transferencia, FECAP, Financiamiento → precio limpio sin descuento
     setForm((prev: any) => ({
       ...prev,
       montoEsperado: precioBase,
       montoDescuento: 0,
       montoFinal: precioBase,
     }));
-  }, [form.metodoPago, form.tipoPrecioAplicado, cursoData]);
+  }, [form.metodoPago, form.tipoPrecioAplicado, cursoData, isSinCosto]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -319,7 +328,7 @@ export default function InscripcionModal({
     }));
   };
 
-  // ── Validación ─────────────────────────────────────────────────────────────
+  // ── Validación (simplificada para Sin Costo) ─────────────────────────────
 
   const validateForm = (): boolean => {
     if (!cursoData) {
@@ -334,55 +343,70 @@ export default function InscripcionModal({
       sileo.warning({ title: "Tipo de precio requerido", description: "Selecciona el tipo de precio del curso." });
       return false;
     }
-    if (!form.estadoPago) {
-      sileo.warning({ title: "Estado de pago requerido", description: "Selecciona el estado de pago." });
-      return false;
+
+    // Validaciones específicas según método
+    if (!isSinCosto) {
+      if (!form.estadoPago) {
+        sileo.warning({ title: "Estado de pago requerido", description: "Selecciona el estado de pago." });
+        return false;
+      }
+      
+      if (
+        (form.metodoPago === "EFECTIVO" || form.metodoPago === "TRANSFERENCIA") &&
+        (!form.montoPagado || form.montoPagado <= 0)
+      ) {
+        sileo.warning({ title: "Monto requerido", description: "Ingresa el monto recibido para continuar." });
+        return false;
+      }
+      
+      if (form.estadoPago === "PAGADO" && !form.fechaPago) {
+        sileo.warning({ title: "Fecha de pago requerida", description: "Indica la fecha en que se realizó el pago." });
+        return false;
+      }
+      
+      if (form.metodoPago === "FECAP") {
+        if (!empresaData) {
+          sileo.warning({ title: "Empresa requerida", description: "Este método requiere empresa asociada al participante." });
+          return false;
+        }
+        if (saldoInfo && !saldoInfo.suficiente) {
+          sileo.warning({ title: "Saldo insuficiente", description: "Saldo FECAP insuficiente para esta inscripción." });
+          return false;
+        }
+      }
+      
+      if (form.metodoPago === "FINANCIAMIENTO") {
+        if (!form.numeroPagos || form.numeroPagos < 1) {
+          sileo.warning({ title: "Campo requerido", description: "Ingresa el número de pagos." });
+          return false;
+        }
+        if (!form.periodicidad) {
+          sileo.warning({ title: "Campo requerido", description: "Selecciona la periodicidad de los pagos." });
+          return false;
+        }
+        if (!form.fechaPrimerPago) {
+          sileo.warning({ title: "Fecha requerida", description: "Indica la fecha del primer pago." });
+          return false;
+        }
+      }
+      
+      if (form.metodoPago === "VALE_AFILIACION") {
+        if (!form.codigoVale) {
+          sileo.warning({ title: "Código requerido", description: "Ingresa el código del vale de afiliación." });
+          return false;
+        }
+        if (!form.montoDescuento || form.montoDescuento <= 0) {
+          sileo.warning({ title: "Descuento requerido", description: "Ingresa el monto del descuento del vale." });
+          return false;
+        }
+      }
     }
-    if (
-      (form.metodoPago === "EFECTIVO" || form.metodoPago === "TRANSFERENCIA") &&
-      (!form.montoPagado || form.montoPagado <= 0)
-    ) {
-      sileo.warning({ title: "Monto requerido", description: "Ingresa el monto recibido para continuar." });
-      return false;
+
+    // Para Sin Costo, solo validamos que haya fecha si está marcada (opcional)
+    if (isSinCosto && form.fechaPago && !form.fechaPago) {
+      // La fecha es opcional en Sin Costo, no validamos nada adicional
     }
-    if (form.estadoPago === "PAGADO" && !form.fechaPago) {
-      sileo.warning({ title: "Fecha de pago requerida", description: "Indica la fecha en que se realizó el pago." });
-      return false;
-    }
-    if (form.metodoPago === "FECAP") {
-      if (!empresaData) {
-        sileo.warning({ title: "Empresa requerida", description: "Este método requiere empresa asociada al participante." });
-        return false;
-      }
-      if (saldoInfo && !saldoInfo.suficiente) {
-        sileo.warning({ title: "Saldo insuficiente", description: "Saldo FECAP insuficiente para esta inscripción." });
-        return false;
-      }
-    }
-    if (form.metodoPago === "FINANCIAMIENTO") {
-      if (!form.numeroPagos || form.numeroPagos < 1) {
-        sileo.warning({ title: "Campo requerido", description: "Ingresa el número de pagos." });
-        return false;
-      }
-      if (!form.periodicidad) {
-        sileo.warning({ title: "Campo requerido", description: "Selecciona la periodicidad de los pagos." });
-        return false;
-      }
-      if (!form.fechaPrimerPago) {
-        sileo.warning({ title: "Fecha requerida", description: "Indica la fecha del primer pago." });
-        return false;
-      }
-    }
-    if (form.metodoPago === "VALE_AFILIACION") {
-      if (!form.codigoVale) {
-        sileo.warning({ title: "Código requerido", description: "Ingresa el código del vale de afiliación." });
-        return false;
-      }
-      if (!form.montoDescuento || form.montoDescuento <= 0) {
-        sileo.warning({ title: "Descuento requerido", description: "Ingresa el monto del descuento del vale." });
-        return false;
-      }
-    }
+
     return true;
   };
 
@@ -397,19 +421,22 @@ export default function InscripcionModal({
         cursoId: cursoData.id,
         tipoPrecioAplicado: form.tipoPrecioAplicado,
         metodoPago: form.metodoPago,
-        montoEsperado: form.montoEsperado,
-        montoFinal: form.montoFinal,
-        montoDescuento: form.montoDescuento || 0,
-        estadoPago: form.estadoPago,
+        montoEsperado: isSinCosto ? 0 : form.montoEsperado,
+        montoFinal: isSinCosto ? 0 : (form.montoFinal ?? 0),
+        montoDescuento: isSinCosto ? 0 : (form.montoDescuento || 0),
+        estadoPago: isSinCosto ? "PAGADO" : form.estadoPago,
         notas: form.notas || "",
       };
 
-      if (form.montoPagado) payload.montoPagado = form.montoPagado;
-      if (form.codigoVale) payload.codigoVale = form.codigoVale;
-      if (form.tieneVale) payload.tieneVale = true;
+      // Solo incluir montos pagados si no es Sin Costo
+      if (!isSinCosto && form.montoPagado) payload.montoPagado = form.montoPagado;
+      if (!isSinCosto && form.codigoVale) payload.codigoVale = form.codigoVale;
+      if (!isSinCosto && form.tieneVale) payload.tieneVale = true;
+      
+      // Fecha de pago: si es Sin Costo, opcionalmente se puede guardar
       if (form.fechaPago) payload.fechaPago = form.fechaPago;
 
-      if (form.metodoPago === "FINANCIAMIENTO") {
+      if (form.metodoPago === "FINANCIAMIENTO" && !isSinCosto) {
         payload.esFinanciamiento = true;
         payload.numeroPagos = form.numeroPagos;
         payload.periodicidad = form.periodicidad;
@@ -417,7 +444,7 @@ export default function InscripcionModal({
         if (form.fechaPrimerPago) payload.fechaPrimerPago = form.fechaPrimerPago;
       }
 
-      if (form.metodoPago === "FECAP") {
+      if (form.metodoPago === "FECAP" && !isSinCosto) {
         payload.empresaId = empresaData.id;
       }
 
@@ -487,7 +514,7 @@ export default function InscripcionModal({
         </Card>
 
         {/* ── Tipo de precio ───────────────────────────────────────────────── */}
-        {cursoData && (
+        {cursoData && !isSinCosto && (
           <div>
             <p className="text-xs text-default-500 font-medium mb-2">
               Tipo de precio
@@ -544,14 +571,14 @@ export default function InscripcionModal({
             ))}
           </Select>
 
-          {/* Nota informativa sobre FECAP */}
-          {!participante?.empresaId && (
+          {/* Nota informativa sobre FECAP (solo si no es Sin Costo) */}
+          {!isSinCosto && !participante?.empresaId && (
             <p className="text-[11px] text-default-400 flex items-center gap-1 px-1">
               <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
               Fondo FECAP requiere empresa asignada al participante.
             </p>
           )}
-          {participante?.empresaId && !fecapDisponible && (
+          {!isSinCosto && participante?.empresaId && !fecapDisponible && (
             <p className="text-[11px] text-warning-600 flex items-center gap-1 px-1">
               <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
               Fondo FECAP no disponible — sin saldo en la empresa asociada.
@@ -565,8 +592,45 @@ export default function InscripcionModal({
             PANELES POR MÉTODO
         ════════════════════════════════════════════════════════════════════ */}
 
-        {/* ── EFECTIVO ─────────────────────────────────────────────────────── */}
-        {form.metodoPago === "EFECTIVO" && (
+        {/* ── SIN COSTO (simplificado) ─────────────────────────────────────── */}
+        {isSinCosto && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-5 rounded-xl bg-gradient-to-r from-success-50 to-emerald-50 border-2 border-success-300 shadow-lg">
+              <div className="p-3 bg-success-100 rounded-full">
+                <GiftIcon className="w-8 h-8 text-success-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-base font-bold text-success-700">🎉 Inscripción sin costo</p>
+                <p className="text-sm text-success-600 mt-1">
+                  El participante no realizará ningún pago. El estado se marcará automáticamente como <strong>PAGADO</strong>.
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-success-700 bg-success-100/50 rounded-lg px-3 py-1.5 inline-flex">
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span>Solo necesitas indicar la fecha (opcional)</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black text-success-600">$0.00</p>
+                <Chip size="sm" color="success" variant="flat" className="mt-1">Sin costo</Chip>
+              </div>
+            </div>
+
+            {/* Fecha opcional para Sin Costo */}
+            <div className="mt-4">
+              <DatePicker
+                label="Fecha del registro (opcional)"
+                value={form.fechaPago ? parseDate(form.fechaPago) as any : null}
+                onChange={(date) => handleChange("fechaPago", date ? date.toString() : null)}
+                showMonthAndYearPickers
+                granularity="day"
+                description="Puedes dejar esta fecha vacía o indicar cuándo se realizó el registro sin costo"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── EFECTIVO (solo si no es Sin Costo) ─────────────────────────────── */}
+        {!isSinCosto && form.metodoPago === "EFECTIVO" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <BanknotesIcon className="w-4 h-4" />
@@ -596,8 +660,8 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── TRANSFERENCIA ────────────────────────────────────────────────── */}
-        {form.metodoPago === "TRANSFERENCIA" && (
+        {/* ── TRANSFERENCIA (solo si no es Sin Costo) ────────────────────────── */}
+        {!isSinCosto && form.metodoPago === "TRANSFERENCIA" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <CreditCardIcon className="w-4 h-4" />
@@ -619,8 +683,8 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── FONDO FECAP ──────────────────────────────────────────────────── */}
-        {form.metodoPago === "FECAP" && (
+        {/* ── FONDO FECAP (solo si no es Sin Costo) ──────────────────────────── */}
+        {!isSinCosto && form.metodoPago === "FECAP" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <BuildingLibraryIcon className="w-4 h-4" />
@@ -635,7 +699,6 @@ export default function InscripcionModal({
                   }`}
               >
                 <CardBody className="py-3 px-4 space-y-3">
-                  {/* Tres celdas: Disponible / A aplicar / Restante */}
                   <div className="grid grid-cols-3 gap-2">
                     <SaldoCell
                       label="Saldo Disponible"
@@ -683,8 +746,8 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── FINANCIAMIENTO ───────────────────────────────────────────────── */}
-        {form.metodoPago === "FINANCIAMIENTO" && (
+        {/* ── FINANCIAMIENTO (solo si no es Sin Costo) ───────────────────────── */}
+        {!isSinCosto && form.metodoPago === "FINANCIAMIENTO" && (
           <div className="space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <CreditCardIcon className="w-4 h-4" />
@@ -730,22 +793,8 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── SIN COSTO ────────────────────────────────────────────────────── */}
-        {form.metodoPago === "SIN_COSTO" && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-success-50 border border-success-200">
-            <GiftIcon className="w-6 h-6 text-success-600 shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-success-700">Inscripción sin costo</p>
-              <p className="text-xs text-success-600 mt-0.5">
-                El participante no realizará ningún pago. Todos los montos quedan en $0.00.
-              </p>
-            </div>
-            <span className="text-xl font-bold text-success-600">$0.00</span>
-          </div>
-        )}
-
-        {/* ── VALE DE AFILIACIÓN ───────────────────────────────────────────── */}
-        {form.metodoPago === "VALE_AFILIACION" && (
+        {/* ── VALE DE AFILIACIÓN (solo si no es Sin Costo) ───────────────────── */}
+        {!isSinCosto && form.metodoPago === "VALE_AFILIACION" && (
           <div className="space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <TagIcon className="w-4 h-4" />
@@ -781,34 +830,38 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── Estado de pago y fecha ───────────────────────────────────────── */}
-        <Divider />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Estado de pago"
-            selectedKeys={form.estadoPago ? [form.estadoPago] : []}
-            disallowEmptySelection
-            onChange={(e) => {
-              if (e.target.value) handleChange("estadoPago", e.target.value);
-            }}
-          >
-            {ESTADO_PAGO.map((ep) => (
-              <SelectItem key={ep.key}>{ep.label}</SelectItem>
-            ))}
-          </Select>
+        {/* ── Estado de pago y fecha (solo si NO es Sin Costo) ───────────────── */}
+        {!isSinCosto && (
+          <>
+            <Divider />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Estado de pago"
+                selectedKeys={form.estadoPago ? [form.estadoPago] : []}
+                disallowEmptySelection
+                onChange={(e) => {
+                  if (e.target.value) handleChange("estadoPago", e.target.value);
+                }}
+              >
+                {ESTADO_PAGO.map((ep) => (
+                  <SelectItem key={ep.key}>{ep.label}</SelectItem>
+                ))}
+              </Select>
 
-          {form.estadoPago === "PAGADO" && (
-            <DatePicker
-              label="Fecha del pago"
-              value={form.fechaPago ? parseDate(form.fechaPago) as any : null}
-              onChange={(date) => handleChange("fechaPago", date ? date.toString() : null)}
-              showMonthAndYearPickers
-              granularity="day"
-            />
-          )}
-        </div>
+              {form.estadoPago === "PAGADO" && (
+                <DatePicker
+                  label="Fecha del pago"
+                  value={form.fechaPago ? parseDate(form.fechaPago) as any : null}
+                  onChange={(date) => handleChange("fechaPago", date ? date.toString() : null)}
+                  showMonthAndYearPickers
+                  granularity="day"
+                />
+              )}
+            </div>
+          </>
+        )}
 
-        {/* ── Notas ────────────────────────────────────────────────────────── */}
+        {/* ── Notas (siempre visible) ────────────────────────────────────────── */}
         <Input
           label="Notas"
           value={form.notas || ""}

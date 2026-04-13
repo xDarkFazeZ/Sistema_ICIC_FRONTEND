@@ -153,8 +153,9 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
             label="RFC"
             placeholder="Ej: EEM900101AB1"
             value={form.rfc}
-            onChange={(e) => handleChange("rfc", e.target.value.toUpperCase())}
-            isInvalid={!!errors.rfc}
+            onChange={(e) =>
+              handleChange("rfc", e.target.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g, ""))
+            } isInvalid={!!errors.rfc}
             errorMessage={errors.rfc}
             maxLength={13}
             startContent={<IdentificationIcon className="w-4 h-4 text-default-400 shrink-0" />}
@@ -185,8 +186,9 @@ export default function EmpresaModal({ isOpen, onClose, onSuccess }: EmpresaModa
               label="Teléfono"
               placeholder="Ej: 8001234567"
               value={form.telefono}
-              onChange={(e) => handleChange("telefono", e.target.value)}
-              maxLength={15}
+              onChange={(e) =>
+                handleChange("telefono", e.target.value.replace(/\D/g, "").slice(0, 10))
+              } maxLength={15}
               startContent={<PhoneIcon className="w-4 h-4 text-default-400 shrink-0" />}
             />
             <Input

@@ -20,22 +20,22 @@ const validate = {
     !v || v.trim().length < 2
       ? "Mínimo 2 caracteres"
       : v.length > 50
-      ? "Máximo 50 caracteres"
-      : null,
+        ? "Máximo 50 caracteres"
+        : null,
 
   apellidoPaterno: (v: string) =>
     !v || v.trim().length < 2
       ? "Mínimo 2 caracteres"
       : v.length > 50
-      ? "Máximo 50 caracteres"
-      : null,
+        ? "Máximo 50 caracteres"
+        : null,
 
   apellidoMaterno: (v: string) =>
     v && v.trim().length < 2
       ? "Mínimo 2 caracteres"
       : v && v.length > 50
-      ? "Máximo 50 caracteres"
-      : null,
+        ? "Máximo 50 caracteres"
+        : null,
 
   rfc: (v: string) =>
     v && !/^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(v)
@@ -49,7 +49,7 @@ const validate = {
     v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
       ? "Formato de correo inválido"
       : null,
-  
+
   fechaNacimiento: (v: string) => {
     if (!v) return null;
     const date = new Date(v);
@@ -154,7 +154,7 @@ export default function InstructorModal({
       nombre: form.nombre.trim(),
       apellidoPaterno: form.apellidoPaterno.trim(),
     };
-    
+
     if (form.apellidoMaterno.trim()) payload.apellidoMaterno = form.apellidoMaterno.trim();
     if (form.rfc.trim()) payload.rfc = form.rfc.trim();
     if (form.celular.trim()) payload.celular = form.celular.trim();
@@ -162,17 +162,11 @@ export default function InstructorModal({
 
     // Manejar fecha de nacimiento
     if (form.fechaNacimiento && form.fechaNacimiento.trim()) {
-      // Verificar que sea una fecha válida
       const parsed = new Date(form.fechaNacimiento);
       if (!isNaN(parsed.getTime())) {
         payload.fechaNacimiento = form.fechaNacimiento;
       }
-    } else if (instructorToEdit) {
-      // Si estamos editando y la fecha está vacía, enviar null para limpiar
-      payload.fechaNacimiento = null;
     }
-    // Si es creación y no hay fecha, no incluimos el campo
-
     console.log('📦 Payload a enviar:', payload);
 
     // Llamada al API

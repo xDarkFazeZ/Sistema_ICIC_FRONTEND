@@ -53,18 +53,19 @@ export default function ModalForm({
       isDismissable={false}
       isKeyboardDismissDisabled
       classNames={{
-        // ✅ Fondo sólido tanto en light como en dark — sin opacidad
-        base: `bg-white dark:bg-gray-900 ${className}`,
-        header: "border-b border-default-200 dark:border-default-700",
-        body: "bg-white dark:bg-gray-900",
-        footer: "border-t border-default-200 dark:border-default-700 bg-white dark:bg-gray-900",
+        base: `bg-gray-50 dark:bg-gray-800 ${className}`,
+        header: "border-b border-gray-200 dark:border-gray-600",
+        body: "bg-gray-50 dark:bg-gray-800",
+        footer: "border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800",
       }}
     >
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className={`flex items-center justify-between bg-white dark:bg-gray-900 ${headerClassName}`}>
-              <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+            <ModalHeader
+              className={`flex items-center justify-between bg-gray-50 dark:bg-gray-800 ${headerClassName}`}
+            >
+              <div className="flex items-center gap-2 text-gray-800 dark:text-gray-100">
                 {title}
               </div>
               {!hideCloseButton && (
@@ -72,14 +73,14 @@ export default function ModalForm({
                   isIconOnly
                   variant="light"
                   onPress={onClose}
-                  className="text-default-400 hover:text-default-600 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </Button>
               )}
             </ModalHeader>
 
-            <ModalBody className="py-6 bg-white dark:bg-gray-900">
+            <ModalBody className="py-6 bg-gray-50 dark:bg-gray-800">
               {children}
             </ModalBody>
 
@@ -93,7 +94,7 @@ export default function ModalForm({
                       <Button
                         variant="light"
                         onPress={onClose}
-                        className="font-medium"
+                        className="font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         Cancelar
                       </Button>

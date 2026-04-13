@@ -519,11 +519,10 @@ export default function CursoModal({
               <Card
                 isPressable
                 onPress={() => handleModeChange("buscar")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
-                  instructorMode === "buscar"
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "buscar"
                     ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
                     : "border-default-200 hover:border-danger/50 hover:shadow-md"
-                }`}
+                  }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
                   <div className={`p-2 rounded-full transition-all ${instructorMode === "buscar" ? "bg-danger/10" : "bg-default-100"}`}>
@@ -539,11 +538,10 @@ export default function CursoModal({
               <Card
                 isPressable
                 onPress={() => handleModeChange("crear")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
-                  instructorMode === "crear"
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "crear"
                     ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
                     : "border-default-200 hover:border-danger/50 hover:shadow-md"
-                }`}
+                  }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
                   <div className={`p-2 rounded-full transition-all ${instructorMode === "crear" ? "bg-danger/10" : "bg-default-100"}`}>
@@ -559,11 +557,10 @@ export default function CursoModal({
               <Card
                 isPressable
                 onPress={() => handleModeChange("despues")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${
-                  instructorMode === "despues"
+                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "despues"
                     ? "border-warning bg-warning-50 dark:bg-warning-900/20 shadow-lg shadow-warning/20"
                     : "border-default-200 hover:border-warning/50 hover:shadow-md"
-                }`}
+                  }`}
               >
                 <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
                   <div className={`p-2 rounded-full transition-all ${instructorMode === "despues" ? "bg-warning/10" : "bg-default-100"}`}>
