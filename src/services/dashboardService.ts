@@ -21,7 +21,7 @@ export interface CursoEstado {
   nombre: string;
   fechaInicio: string;
   fechaFin: string;
-  estado: 'PROXIMO' | 'EN_CURSO' | 'TERMINADO';
+  estado: "PROXIMO" | "EN_CURSO" | "TERMINADO";
   aula?: string;
   instructor?: {
     nombre: string;
@@ -69,47 +69,47 @@ export const dashboardService = {
   async getDashboardData(): Promise<DashboardData> {
     try {
       // Usamos apiClient que ya tiene el token en el interceptor
-      const response = await apiClient.get('/dashboard');
-      
+      const response = await apiClient.get("/dashboard");
+
       // La estructura de respuesta del backend
       if (response.data.success) {
         return response.data.data;
       } else {
-        throw new Error(response.data.message || 'Error al obtener datos');
+        throw new Error(response.data.message || "Error al obtener datos");
       }
     } catch (error) {
-      console.error('Error en dashboardService.getDashboardData:', error);
+      console.error("Error en dashboardService.getDashboardData:", error);
       throw error;
     }
   },
 
   async getInscripcionesPorMes() {
     try {
-      const response = await apiClient.get('/dashboard/inscripciones-mes');
+      const response = await apiClient.get("/dashboard/inscripciones-mes");
       return response.data.data;
     } catch (error) {
-      console.error('Error en dashboardService.getInscripcionesPorMes:', error);
+      console.error("Error en dashboardService.getInscripcionesPorMes:", error);
       throw error;
     }
   },
 
   async getDistribucionCursos() {
     try {
-      const response = await apiClient.get('/dashboard/distribucion-cursos');
+      const response = await apiClient.get("/dashboard/distribucion-cursos");
       return response.data.data;
     } catch (error) {
-      console.error('Error en dashboardService.getDistribucionCursos:', error);
+      console.error("Error en dashboardService.getDistribucionCursos:", error);
       throw error;
     }
   },
 
   async getPagosPendientes() {
     try {
-      const response = await apiClient.get('/dashboard/pagos-pendientes');
+      const response = await apiClient.get("/dashboard/pagos-pendientes");
       return response.data.data;
     } catch (error) {
-      console.error('Error en dashboardService.getPagosPendientes:', error);
+      console.error("Error en dashboardService.getPagosPendientes:", error);
       throw error;
     }
-  }
+  },
 };

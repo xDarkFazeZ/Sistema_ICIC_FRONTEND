@@ -208,6 +208,7 @@ interface DashboardPDFProps {
         distribucionCursos: Array<{ nombre: string; total: number }>;
         saldoFecapPorMes: Array<{ mes: string; ingreso: number; gasto: number }>;
         horasHombrePorMes: Array<{ mes: string; total: number }>;
+        ingresosPorMesEfectivoTransferencia: Array<{ mes: string; total: number }>; // ← NUEVO
     };
     fechaGeneracion: string;
 }
@@ -310,6 +311,14 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
         value: item.total,
     }));
 
+    const ingresosData = dashboardData.ingresosPorMesEfectivoTransferencia.map(item => ({
+        label: formatMes(item.mes),
+        value: item.total,
+    }));
+
+    const totalIngresos = dashboardData.ingresosPorMesEfectivoTransferencia
+        .reduce((sum, m) => sum + m.total, 0);
+
     return (
         <Document>
             <Page size="LETTER" orientation="portrait" style={styles.page}>
@@ -401,6 +410,37 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                         </View>
                     </View>
                     <BarChartSimulator data={horasHombreData} color="#6366f1" />
+                </View>
+                {/* Gráfico 5: Ingresos por Mes (Efectivo + Transferencia) */}
+                <View style={[styles.chartContainer, { marginTop: 10 }]} wrap={false}>
+                    <Text style={styles.chartTitle}>Ingresos por Mes</Text>
+                    <Text style={styles.chartSubtitle}>
+                        Pagos confirmados por Efectivo y Transferencia
+                    </Text>
+                    <View style={styles.statsRow}>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>
+                                {formatCurrency(totalIngresos)}
+                            </Text>
+                            <Text style={styles.statLabel}>Total Recaudado</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>
+                                {dashboardData.ingresosPorMesEfectivoTransferencia.length}
+                            </Text>
+                            <Text style={styles.statLabel}>Meses con Ingresos</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>
+                                {formatCurrency(
+                                    totalIngresos /
+                                    (dashboardData.ingresosPorMesEfectivoTransferencia.length || 1)
+                                )}
+                            </Text>
+                            <Text style={styles.statLabel}>Promedio Mensual</Text>
+                        </View>
+                    </View>
+                    <BarChartSimulator data={ingresosData} color="#22c55e" />
                 </View>
                 <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Pagina ${pageNumber} de ${totalPages}`} fixed />
             </Page>

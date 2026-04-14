@@ -22,15 +22,16 @@ export const DashboardPDFButton: React.FC<DashboardPDFButtonProps> = ({
     try {
       // Obtener datos del dashboard
       const dashboardData = await dashboardService.getDashboardData();
-      
+
       // Preparar datos para el PDF (solo los gráficos)
       const pdfData = {
         inscripcionesPorMes: dashboardData.inscripcionesPorMes || [],
         distribucionCursos: dashboardData.distribucionCursos || [],
-        saldoFecapPorMes: (dashboardData as any).saldoFecapPorMes || [],
-        horasHombrePorMes: (dashboardData as any).horasHombrePorMes || [],
+        saldoFecapPorMes: dashboardData.saldoFecapPorMes || [],
+        horasHombrePorMes: dashboardData.horasHombrePorMes || [],
+        ingresosPorMesEfectivoTransferencia: dashboardData.ingresosPorMesEfectivoTransferencia || [], // ← NUEVO
       };
-      
+
       const fechaGeneracion = new Date().toLocaleDateString('es-MX', {
         weekday: 'long',
         year: 'numeric',
@@ -39,9 +40,9 @@ export const DashboardPDFButton: React.FC<DashboardPDFButtonProps> = ({
         hour: '2-digit',
         minute: '2-digit',
       });
-      
+
       const blob = await pdf(<DashboardPDF dashboardData={pdfData} fechaGeneracion={fechaGeneracion} />).toBlob();
-      
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
