@@ -22,6 +22,7 @@ import { CalendarDate, parseDate } from "@internationalized/date";
 import { sileo } from "sileo";
 import ModalForm from "../../common/modalForm";
 import InscripcionModal from "../Inscripcion/inscripcionModal";
+import InscripcionCerradaModal from "../Inscripcion/InscripcionCerradaModal";
 import EmpresaModal from "../../modals/Empresa/empresaModal";
 import { useEmpresaModal } from "../../modals/Empresa/EmpresaModalContext";
 import {
@@ -612,6 +613,36 @@ export default function ParticipanteModal({
 
   const handleBlur = (field: string) => {
     setTouched((p) => ({ ...p, [field]: true }));
+  };
+
+  const resetParticipantFormForNext = () => {
+    setForm((prev) => ({
+      esAfiliado: false,
+      empresaId: prev.empresaId,
+      cursoId: prev.cursoId,
+    }));
+    setErrors({});
+    setTouched({});
+    setSubmitError(null);
+    setDuplicadoDetectado(null);
+    setInscripcionData(null);
+  };
+
+  const handleInscripcionModalClose = () => {
+    setInscripcionModalOpen(false);
+    setInscripcionData(null);
+    if (!empresaIdPreasignada) onClose();
+  };
+
+  const handleInscripcionSuccess = () => {
+    setInscripcionModalOpen(false);
+    setInscripcionData(null);
+    if (empresaIdPreasignada) {
+      resetParticipantFormForNext();
+    } else {
+      onClose();
+    }
+    onSuccess?.(inscripcionData?.participante);
   };
 
   // ── Payload ──────────────────────────────────────────────────────────────
@@ -1429,28 +1460,25 @@ export default function ParticipanteModal({
       )}
 
       {/* Modal: Inscripción */}
-{inscripcionData && (
-  <InscripcionModal
-    isOpen={inscripcionModalOpen}
-    onClose={() => {
-      setInscripcionModalOpen(false);
-      setInscripcionData(null);
-      onClose();
-    }}
-    onSuccess={() => {
-      sileo.success({ title: "Inscripción completada" });
-      setInscripcionModalOpen(false);
-      setInscripcionData(null);
-      onSuccess?.(inscripcionData.participante);
-      onClose();
-    }}
-    participante={inscripcionData.participante}
-    curso={inscripcionData.curso}
-    empresa={empresaCompleta}
-    // ↓ NUEVO: activa el modo simplificado cuando viene de curso cerrado
-    modoCerrado={!!empresaIdPreasignada}
-  />
-)}
+      {inscripcionData && empresaIdPreasignada ? (
+        <InscripcionCerradaModal
+          isOpen={inscripcionModalOpen}
+          onClose={handleInscripcionModalClose}
+          onSuccess={handleInscripcionSuccess}
+          participante={inscripcionData.participante}
+          curso={inscripcionData.curso}
+          empresa={empresaCompleta}
+        />
+      ) : inscripcionData ? (
+        <InscripcionModal
+          isOpen={inscripcionModalOpen}
+          onClose={handleInscripcionModalClose}
+          onSuccess={handleInscripcionSuccess}
+          participante={inscripcionData.participante}
+          curso={inscripcionData.curso}
+          empresa={empresaCompleta}
+        />
+      ) : null}
     </>
   );
 }

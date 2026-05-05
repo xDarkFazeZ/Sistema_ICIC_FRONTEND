@@ -58,6 +58,8 @@ export default function Cursos() {
   const [subtituloSiguientePaso, setSubtituloSiguientePaso]       = useState<string | undefined>(undefined);
   // empresa pre-asignada para participantes de curso cerrado
   const [empresaIdParticipante, setEmpresaIdParticipante]         = useState<number | null>(null);
+  const [targetParticipantes, setTargetParticipantes]             = useState<number | null>(null);
+  const [participantesAsignados, setParticipantesAsignados]       = useState(0);
 
   const [eliminarDialogAbierto, setEliminarDialogAbierto] = useState(false);
   const [cursoAEliminar, setCursoAEliminar]               = useState<{ id: number; nombre: string } | null>(null);
@@ -107,8 +109,21 @@ export default function Cursos() {
     // Si es cerrado, guardamos la empresa para pre-asignarla
     if (cursoCreado.tipoCurso === "CERRADO" && cursoCreado.empresaId) {
       setEmpresaIdParticipante(cursoCreado.empresaId);
+      const target = Number(cursoCreado.numParticipantes ?? cursoCreado.cupo ?? 0);
+      setTargetParticipantes(target > 0 ? target : null);
+      setParticipantesAsignados(0);
+      if (target > 0) {
+        setModalParticipanteAbierto(true);
+        setSiguientePasoModalAbierto(false);
+        setTituloSiguientePaso("Registrar participantes");
+        setSubtituloSiguientePaso(`Se deben cargar ${target} participantes para este curso.`);
+        setOpcionesSiguientePaso([]);
+        return;
+      }
     } else {
       setEmpresaIdParticipante(null);
+      setTargetParticipantes(null);
+      setParticipantesAsignados(0);
     }
 
     setOpcionesSiguientePaso([
@@ -160,12 +175,13 @@ export default function Cursos() {
     try {
       setModalLoading(true);
       const cursoCreado = await crearCurso(data);
-      setModalCursoCerradoOpen(false);
-      postCreacion(cursoCreado);
+      sileo.success({ title: "Curso creado correctamente", description: cursoCreado.nombre });
+      cargarCursos();
+      return cursoCreado;
     } catch (error) {
       console.error("Error al crear curso cerrado:", error);
       sileo.error({ title: "Error al crear el curso cerrado" });
-      throw error; // para que el modal interno pueda manejarlo
+      throw error;
     } finally {
       setModalLoading(false);
     }
@@ -176,13 +192,37 @@ export default function Cursos() {
   // ─────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleParticipanteCreado = (respuesta: any) => {
-    setModalParticipanteAbierto(false);
     const p = respuesta?.data ?? respuesta;
     const nombreCompleto = `${p?.nombre ?? ""} ${p?.apellidoPaterno ?? ""}`.trim();
+    const nuevoAsignado = participantesAsignados + 1;
+
+    if (empresaIdParticipante && cursoActivoId && targetParticipantes) {
+      setParticipantesAsignados(nuevoAsignado);
+      if (nuevoAsignado < targetParticipantes) {
+        sileo.success({
+          title: `Participante ${nuevoAsignado} de ${targetParticipantes}`,
+          description: nombreCompleto,
+        });
+        setModalParticipanteAbierto(true);
+        setSiguientePasoModalAbierto(false);
+        return;
+      }
+
+      sileo.success({
+        title: "Carga completa",
+        description: `Se registraron ${targetParticipantes} participantes para el curso.`,
+      });
+      setModalParticipanteAbierto(false);
+      setCursoActivoId(null);
+      setEmpresaIdParticipante(null);
+      setTargetParticipantes(null);
+      setParticipantesAsignados(0);
+      return;
+    }
+
+    setModalParticipanteAbierto(false);
     setTituloSiguientePaso("¿Asignar otro participante?");
     setSubtituloSiguientePaso(nombreCompleto);
-    sileo.success({ title: "Participante asignado", description: nombreCompleto });
-
     setOpcionesSiguientePaso([
       {
         label: "Sí, asignar otro",
@@ -469,13 +509,29 @@ export default function Cursos() {
                               onAction={(key) => {
                                 switch (key) {
                                   case "editar":
-                                    setCursoAEditar(curso);
-                                    setModalCursoAbiertoOpen(true);
+                                    if (curso.tipoCurso === "CERRADO") {
+                                      setCursoAEditar(curso);
+                                      setModalCursoCerradoOpen(true);
+                                    } else {
+                                      setCursoAEditar(curso);
+                                      setModalCursoAbiertoOpen(true);
+                                    }
                                     break;
                                   case "detalle":
                                     setCursoSeleccionado(curso);
                                     setDetalleAbierto(true);
                                     break;
+                                  case "agregar-participantes": {
+                                    const inscritos = curso._count?.inscripciones ?? 0;
+                                    const target = curso.numParticipantes ?? 0;
+                                    const faltan = Math.max(0, target - inscritos);
+                                    setCursoActivoId(curso.id);
+                                    setEmpresaIdParticipante(curso.empresaId);
+                                    setTargetParticipantes(faltan > 0 ? target : null);
+                                    setParticipantesAsignados(inscritos);
+                                    setModalParticipanteAbierto(true);
+                                    break;
+                                  }
                                   case "toggle":
                                     handleToggleEstado(curso);
                                     break;
@@ -497,6 +553,22 @@ export default function Cursos() {
                                     <Eye className="w-4 h-4 text-default-500" /> Ver detalle
                                   </div>
                                 </DropdownItem>
+                                {curso.tipoCurso === "CERRADO" && curso.empresaId && canUpdate && (() => {
+                                  const inscritos = curso._count?.inscripciones ?? 0;
+                                  const target = curso.numParticipantes ?? 0;
+                                  const faltan = target > 0 ? target - inscritos : 0;
+                                  return faltan > 0 ? (
+                                    <DropdownItem key="agregar-participantes">
+                                      <div className="flex items-center gap-2">
+                                        <UserPlus className="w-4 h-4 text-primary-500" />
+                                        <span>Agregar participantes</span>
+                                        <Chip size="sm" variant="flat" color="primary" className="ml-auto">
+                                          {faltan}
+                                        </Chip>
+                                      </div>
+                                    </DropdownItem>
+                                  ) : null;
+                                })()}
                                 {canUpdate ? (
                                   <DropdownItem key="toggle"
                                     className={curso.activo ? "text-warning" : "text-success"}>
@@ -580,9 +652,10 @@ export default function Cursos() {
       {/* ── Modal curso cerrado ── */}
       <CursoCerradoModal
         isOpen={modalCursoCerradoOpen}
-        onClose={() => setModalCursoCerradoOpen(false)}
+        onClose={() => { setModalCursoCerradoOpen(false); setCursoAEditar(null); cargarCursos(); }}
         onCursoCreado={handleCrearCursoCerrado}
         isLoading={modalLoading}
+        cursoToEdit={cursoAEditar?.tipoCurso === "CERRADO" ? cursoAEditar : undefined}
       />
 
       {/* ── Detalle ── */}

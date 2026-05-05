@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { sileo } from "sileo";
-import { crearInscripcion } from "../services/inscripcionService";
+import { crearInscripcion, crearInscripcionCursoCerrado } from "../services/inscripcionService";
 import { fecapService }     from "../services/fecapService";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ export function useInscripcionCerrada({
         payload.empresaId = empresa.id;
       }
 
-      const response = await crearInscripcion(payload);
+      const response = await crearInscripcionCursoCerrado(payload);
       sileo.success({
         title:       "¡Inscripción creada!",
         description: `${participante.nombre} ${participante.apellidoPaterno} inscrito correctamente.`,

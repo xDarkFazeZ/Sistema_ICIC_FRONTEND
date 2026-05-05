@@ -214,7 +214,7 @@ function CursoCerradoBanner({
           <div className="flex items-center gap-2">
             <CheckCircleIcon className="w-4 h-4 text-success-500" />
             <span className="text-sm text-default-600">
-              Precio <span className="font-semibold text-default-800">{labelTipo}</span> aplicado
+              Precio aplicado automáticamente
             </span>
           </div>
           <span className="text-xl font-black text-warning-700">${fmt(total)}</span>
@@ -445,7 +445,7 @@ export default function InscripcionModal({
     if (!cursoData) {
       sileo.warning({ title: "Curso requerido" }); return false;
     }
-    if (!form.metodoPago) {
+    if (!form.metodoPago && !modoCerrado) {
       sileo.warning({ title: "Método de pago requerido" }); return false;
     }
     if (!form.tipoPrecioAplicado) {
@@ -453,7 +453,7 @@ export default function InscripcionModal({
     }
 
     if (!isSinCosto) {
-      if (!form.estadoPago) {
+      if (!form.estadoPago && !modoCerrado) {
         sileo.warning({ title: "Estado de pago requerido" }); return false;
       }
       if (
@@ -646,38 +646,39 @@ export default function InscripcionModal({
           </div>
         )}
 
-        {/* ── MÉTODO DE PAGO ───────────────────────────────────────────────── */}
-        <div className="space-y-1.5">
-          <Select
-            label="Método de pago"
-            placeholder="Selecciona un método"
-            selectedKeys={form.metodoPago ? [form.metodoPago] : []}
-            disallowEmptySelection
-            onChange={(e) => { if (e.target.value) handleChange("metodoPago", e.target.value); }}
-            startContent={<span className="text-base">{metodo?.icon}</span>}
-          >
-            {metodosFiltrados.map((mp) => (
-              <SelectItem key={mp.key} startContent={<span>{mp.icon}</span>}>
-                {mp.label}
-              </SelectItem>
-            ))}
-          </Select>
+        {!modoCerrado && (
+          <div className="space-y-1.5">
+            <Select
+              label="Método de pago"
+              placeholder="Selecciona un método"
+              selectedKeys={form.metodoPago ? [form.metodoPago] : []}
+              disallowEmptySelection
+              onChange={(e) => { if (e.target.value) handleChange("metodoPago", e.target.value); }}
+              startContent={<span className="text-base">{metodo?.icon}</span>}
+            >
+              {metodosFiltrados.map((mp) => (
+                <SelectItem key={mp.key} startContent={<span>{mp.icon}</span>}>
+                  {mp.label}
+                </SelectItem>
+              ))}
+            </Select>
 
-          {!isSinCosto && !modoCerrado && !participante?.empresaId && (
-            <p className="text-[11px] text-default-400 flex items-center gap-1 px-1">
-              <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
-              Fondo FECAP requiere empresa asignada al participante.
-            </p>
-          )}
-          {!isSinCosto && !modoCerrado && participante?.empresaId && !fecapDisponible && (
-            <p className="text-[11px] text-warning-600 flex items-center gap-1 px-1">
-              <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
-              Fondo FECAP no disponible — sin saldo en la empresa asociada.
-            </p>
-          )}
-        </div>
+            {!isSinCosto && !participante?.empresaId && (
+              <p className="text-[11px] text-default-400 flex items-center gap-1 px-1">
+                <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
+                Fondo FECAP requiere empresa asignada al participante.
+              </p>
+            )}
+            {!isSinCosto && participante?.empresaId && !fecapDisponible && (
+              <p className="text-[11px] text-warning-600 flex items-center gap-1 px-1">
+                <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
+                Fondo FECAP no disponible — sin saldo en la empresa asociada.
+              </p>
+            )}
+          </div>
+        )}
 
-        <Divider />
+        {!modoCerrado && <Divider />}
 
         {/* ══════════════════════════════════════════════════════════════════
             PANELES POR MÉTODO  (idénticos para modo normal y cerrado)
@@ -712,7 +713,7 @@ export default function InscripcionModal({
         )}
 
         {/* Efectivo */}
-        {!isSinCosto && form.metodoPago === "EFECTIVO" && (
+        {!isSinCosto && !modoCerrado && form.metodoPago === "EFECTIVO" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <BanknotesIcon className="w-4 h-4" /> Pago en efectivo
@@ -737,7 +738,7 @@ export default function InscripcionModal({
         )}
 
         {/* Transferencia */}
-        {!isSinCosto && form.metodoPago === "TRANSFERENCIA" && (
+        {!isSinCosto && !modoCerrado && form.metodoPago === "TRANSFERENCIA" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <CreditCardIcon className="w-4 h-4" /> Transferencia bancaria
@@ -754,7 +755,7 @@ export default function InscripcionModal({
         )}
 
         {/* FECAP */}
-        {!isSinCosto && form.metodoPago === "FECAP" && (
+        {!isSinCosto && !modoCerrado && form.metodoPago === "FECAP" && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <BuildingLibraryIcon className="w-4 h-4" />
@@ -790,7 +791,7 @@ export default function InscripcionModal({
         )}
 
         {/* Financiamiento */}
-        {!isSinCosto && form.metodoPago === "FINANCIAMIENTO" && (
+        {!isSinCosto && !modoCerrado && form.metodoPago === "FINANCIAMIENTO" && (
           <div className="space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <CreditCardIcon className="w-4 h-4" /> Detalles del financiamiento
@@ -824,7 +825,7 @@ export default function InscripcionModal({
         )}
 
         {/* Vale de afiliación */}
-        {!isSinCosto && form.metodoPago === "VALE_AFILIACION" && (
+        {!isSinCosto && !modoCerrado && form.metodoPago === "VALE_AFILIACION" && (
           <div className="space-y-4">
             <h4 className="text-sm font-semibold flex items-center gap-2 text-default-700">
               <TagIcon className="w-4 h-4" /> Vale de afiliación
@@ -851,7 +852,7 @@ export default function InscripcionModal({
         )}
 
         {/* Estado de pago y fecha (modo normal, no Sin Costo) */}
-        {!isSinCosto && (
+        {!isSinCosto && !modoCerrado && (
           <>
             <Divider />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

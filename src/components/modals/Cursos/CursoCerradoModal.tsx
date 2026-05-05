@@ -2,32 +2,39 @@ import { useEffect, useState } from "react";
 import {
   Button, Input, Textarea, Select, SelectItem, Switch,
   DateRangePicker, Autocomplete, AutocompleteItem,
-  Card, CardBody, Divider, Chip,
+  Card, CardBody, Divider, Chip, Progress,
 } from "@heroui/react";
 import { useDebounce } from "use-debounce";
+import { parseDate } from "@internationalized/date";
 import { sileo } from "sileo";
 import {
   BuildingOffice2Icon, MagnifyingGlassIcon, PlusCircleIcon,
   AcademicCapIcon, CurrencyDollarIcon, CalendarIcon, MapPinIcon,
   DocumentTextIcon, ClockIcon, ChevronDownIcon, UserPlusIcon,
   CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon,
-  UsersIcon, CalculatorIcon,
+  UsersIcon, CalculatorIcon, UserIcon,
 } from "@heroicons/react/24/outline";
 
-import { buscarInstructores }    from "../../../services/instructorService";
-import { buscarEmpresas }        from "../../../services/empresaService";
-import InstructorModal           from "../Instructor/instructorModal";
-import EmpresaModal              from "../Empresa/empresaModal";
-import { EmpresaModalProvider }  from "../Empresa/EmpresaModalContext";
-import ModalForm                 from "../../common/modalForm";
-import { useCamposCurso }        from "../../../hooks/UseCamposCurso";
+import { buscarInstructores }        from "../../../services/instructorService";
+import { buscarEmpresas }            from "../../../services/empresaService";
+import { crearParticipante }         from "../../../services/participanteService";
+import { crearInscripcionCursoCerrado } from "../../../services/inscripcionService";
+import { actualizarCurso }            from "../../../services/cursoService";
+import { apiClient }                 from "../../../services/api/client";
+import InstructorModal               from "../Instructor/instructorModal";
+import EmpresaModal                  from "../Empresa/empresaModal";
+import { EmpresaModalProvider }      from "../Empresa/EmpresaModalContext";
+import ModalForm                     from "../../common/modalForm";
+import { useCamposCurso }            from "../../../hooks/UseCamposCurso";
 
 interface CursoCerradoModalProps {
   isOpen:        boolean;
   onClose:       () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onCursoCreado: (curso: any) => void;
+  onCursoCreado: (curso: any) => Promise<any>;
   isLoading?:    boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cursoToEdit?:  any;
 }
 
 const NIVELES = [
@@ -46,9 +53,21 @@ const CURSO_INITIAL = {
   instructorId: null as number | null,
 };
 
+const PARTICIPANTE_INITIAL = {
+  nombre: "",
+  apellidoPaterno: "",
+  apellidoMaterno: "",
+  fechaNacimiento: "",
+  correo: "",
+  celular: "",
+  esAfiliado: false,
+};
+
 export default function CursoCerradoModal({
-  isOpen, onClose, onCursoCreado, isLoading = false,
+  isOpen, onClose, onCursoCreado, isLoading = false, cursoToEdit,
 }: CursoCerradoModalProps) {
+
+  const isEditMode = !!cursoToEdit;
 
   const [paso, setPaso] = useState(1);
 
@@ -85,6 +104,16 @@ export default function CursoCerradoModal({
   const [empresaErrors, setEmpresaErrors]         = useState<Record<string, string>>({});
   const [modalEmpresaOpen, setModalEmpresaOpen]   = useState(false);
 
+  // ── Paso 4: Alta de participantes ───────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [cursoCreado, setCursoCreado]             = useState<any | null>(null);
+  const [participanteForm, setParticipanteForm]   = useState({ ...PARTICIPANTE_INITIAL });
+  const [participanteErrors, setParticipanteErrors] = useState<Record<string, string>>({});
+  const [participantesRegistrados, setParticipantesRegistrados] = useState(0);
+  const [isSubmittingParticipante, setIsSubmittingParticipante] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [participantesLista, setParticipantesLista] = useState<any[]>([]);
+
   // ── Reset al cerrar ─────────────────────────────────────
   useEffect(() => {
     if (!isOpen) {
@@ -97,9 +126,78 @@ export default function CursoCerradoModal({
       setInstructorSearch(""); setInstructores([]); setInstructorSel(null);
       setEmpresaMode("buscar");
       setEmpresaSearch(""); setEmpresas([]); setEmpresaSel(null); setEmpresaErrors({});
+      setCursoCreado(null);
+      setParticipanteForm({ ...PARTICIPANTE_INITIAL });
+      setParticipanteErrors({});
+      setParticipantesRegistrados(0);
+      setIsSubmittingParticipante(false);
+      setParticipantesLista([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // ── Modo edición: pre-cargar datos del curso existente ──
+  useEffect(() => {
+    if (!isOpen || !cursoToEdit) return;
+
+    const curso = cursoToEdit;
+
+    const fi = curso.fechaInicio ? curso.fechaInicio.split("T")[0] : "";
+    const ff = curso.fechaFin ? curso.fechaFin.split("T")[0] : "";
+
+    setForm({
+      nombre:          curso.nombre ?? "",
+      descripcion:     curso.descripcion ?? "",
+      duracion:        curso.duracion?.toString() ?? "",
+      horario:         curso.horario ?? "",
+      fechaInicio:     fi,
+      fechaFin:        ff,
+      aula:            curso.aula ?? "",
+      nivelGerencial:  curso.nivelGerencial ?? "",
+      activo:          curso.activo ?? true,
+      instructorId:    curso.instructorId ?? null,
+    });
+
+    if (fi && ff) {
+      try {
+        setDateRange({ start: parseDate(fi), end: parseDate(ff) });
+      } catch { /* formato inválido — dejar vacío */ }
+    }
+
+    if (curso.instructor) {
+      setInstructorSel(curso.instructor);
+      setInstructorMode("buscar");
+    } else {
+      setInstructorMode("despues");
+    }
+
+    if (curso.empresa) {
+      setEmpresaSel(curso.empresa);
+    }
+
+    const precio = curso.precioPublico ?? curso.precioAfiliado ?? 0;
+    // _count.inscripciones viene del listado, numParticipantes del modelo
+    const inscritosActuales = curso._count?.inscripciones ?? 0;
+    const numPart = curso.numParticipantes ?? inscritosActuales ?? 1;
+    setPreciosCerrado({
+      precioPorParticipante: precio.toString(),
+      numParticipantes:      numPart.toString(),
+    });
+
+    setCursoCreado(curso);
+    setPaso(1);
+
+    apiClient.get(`/cursos/${curso.id}/inscripciones`).then((res) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inscripciones = res.data?.data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const participantes = inscripciones.map((insc: any) => insc.participante).filter(Boolean);
+      setParticipantesLista(participantes);
+      setParticipantesRegistrados(participantes.length);
+    }).catch(console.error);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, cursoToEdit]);
 
   useEffect(() => {
     if (instructorMode !== "buscar" || !debouncedInstSearch || debouncedInstSearch.length < 2) {
@@ -178,8 +276,112 @@ export default function CursoCerradoModal({
       empresaId:    empresaSel!.id,
       duracion:     form.duracion ? Number(form.duracion) : undefined,
       instructorId: instructorMode === "despues" ? null : form.instructorId,
+      numParticipantes: numP,
     };
-    try { await onCursoCreado(payload); } catch { /* padre maneja */ }
+    try {
+      if (isEditMode && cursoToEdit?.id) {
+        const cursoActualizado = await actualizarCurso(cursoToEdit.id, payload);
+        setCursoCreado(cursoActualizado);
+        sileo.success({ title: "Curso actualizado correctamente" });
+      } else {
+        const curso = await onCursoCreado(payload);
+        setCursoCreado(curso);
+      }
+      setPaso(4);
+    } catch (error: unknown) {
+      if (!isEditMode) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      sileo.error({
+        title: "Error al actualizar",
+        description: err?.response?.data?.message || err?.message || "Error inesperado",
+      });
+    }
+  };
+
+  // ── Paso 4: handlers de participantes ───────────────────
+  const handleParticipanteChange = (field: string, value: unknown) => {
+    setParticipanteForm((p) => ({ ...p, [field]: value }));
+    if (participanteErrors[field]) setParticipanteErrors((p) => ({ ...p, [field]: "" }));
+  };
+
+  const validateParticipante = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!participanteForm.nombre || participanteForm.nombre.trim().length < 2)
+      e.nombre = "Nombre requerido (mín. 2 caracteres)";
+    if (!participanteForm.apellidoPaterno || participanteForm.apellidoPaterno.trim().length < 2)
+      e.apellidoPaterno = "Apellido paterno requerido (mín. 2 caracteres)";
+    if (!participanteForm.fechaNacimiento)
+      e.fechaNacimiento = "Fecha de nacimiento requerida";
+    if (Object.keys(e).length > 0) {
+      setParticipanteErrors(e);
+      sileo.warning({ title: "Campos incompletos", description: "Revisa los campos marcados." });
+      return false;
+    }
+    return true;
+  };
+
+  const handleRegistrarParticipante = async () => {
+    if (!validateParticipante()) return;
+    setIsSubmittingParticipante(true);
+    try {
+      const cursoId = cursoCreado?.id ?? cursoCreado?.data?.id;
+      const participantePayload: Record<string, unknown> = {
+        nombre:           participanteForm.nombre.trim(),
+        apellidoPaterno:  participanteForm.apellidoPaterno.trim(),
+        fechaNacimiento:  participanteForm.fechaNacimiento,
+        esAfiliado:       participanteForm.esAfiliado,
+        empresaId:        empresaSel!.id,
+      };
+      if (participanteForm.apellidoMaterno?.trim())
+        participantePayload.apellidoMaterno = participanteForm.apellidoMaterno.trim();
+      if (participanteForm.correo?.trim())
+        participantePayload.correo = participanteForm.correo.trim();
+      if (participanteForm.celular?.trim())
+        participantePayload.celular = participanteForm.celular.trim();
+
+      const respParticipante = await crearParticipante(participantePayload);
+      const participante = respParticipante?.data ?? respParticipante;
+
+      await crearInscripcionCursoCerrado({
+        participanteId:     participante.id,
+        cursoId,
+        tipoPrecioAplicado: participante.esAfiliado ? "AFILIADO" : "PUBLICO_GENERAL",
+        metodoPago:         "EFECTIVO",
+        montoEsperado:      precioPorP,
+        montoFinal:         precioPorP,
+        montoDescuento:     0,
+        estadoPago:         "PAGADO",
+        montoPagado:        precioPorP,
+        notas:              "",
+      });
+
+      const nuevo = participantesRegistrados + 1;
+      setParticipantesRegistrados(nuevo);
+      setParticipantesLista((prev) => [...prev, participante]);
+      setParticipanteForm({ ...PARTICIPANTE_INITIAL });
+      setParticipanteErrors({});
+
+      if (nuevo >= numP) {
+        sileo.success({
+          title: "¡Carga completa!",
+          description: `Se registraron ${numP} participantes para el curso.`,
+        });
+        onClose();
+      } else {
+        sileo.success({
+          title: `Participante ${nuevo} de ${numP} registrado`,
+          description: `${participante.nombre} ${participante.apellidoPaterno}`,
+        });
+      }
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      const msg = err?.response?.data?.message || err?.message || "Error inesperado";
+      sileo.error({ title: "Error al registrar participante", description: msg });
+    } finally {
+      setIsSubmittingParticipante(false);
+    }
   };
 
   const dateRangeError = errors.fechaInicio || errors.fechaFin;
@@ -192,21 +394,23 @@ export default function CursoCerradoModal({
         title={
           <div className="flex items-center gap-2">
             <AcademicCapIcon className="w-6 h-6 text-danger" />
-            <span>Nuevo Curso Cerrado</span>
-            <Chip size="sm" variant="flat" color="warning" className="ml-2">
-              Paso {paso} de 3
+            <span>{isEditMode ? "Editar Curso Cerrado" : paso <= 3 ? "Nuevo Curso Cerrado" : "Registrar Participantes"}</span>
+            <Chip size="sm" variant="flat" color={paso <= 3 ? "warning" : "success"} className="ml-2">
+              Paso {paso} de 4
             </Chip>
           </div>
         }
         size="3xl"
         isLoading={isLoading}
         hideFooter
+        hideCloseButton={paso === 4 && !isEditMode}
       >
         <div className="flex items-center gap-2 mb-6">
           {[
             { n: 1, label: "Datos del curso" },
             { n: 2, label: "Empresa" },
             { n: 3, label: "Confirmar" },
+            { n: 4, label: "Participantes" },
           ].map(({ n, label }) => (
             <div key={n} className="flex items-center gap-2 flex-1">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all ${
@@ -219,7 +423,7 @@ export default function CursoCerradoModal({
               <span className={`text-xs font-medium hidden sm:inline ${
                 paso === n ? "text-danger" : paso > n ? "text-success" : "text-default-400"
               }`}>{label}</span>
-              {n < 3 && <div className={`h-0.5 flex-1 rounded-full ${paso > n ? "bg-success" : "bg-default-200"}`} />}
+              {n < 4 && <div className={`h-0.5 flex-1 rounded-full ${paso > n ? "bg-success" : "bg-default-200"}`} />}
             </div>
           ))}
         </div>
@@ -594,8 +798,234 @@ export default function CursoCerradoModal({
               <Button variant="flat" size="lg" onPress={() => setPaso(2)}>← Anterior</Button>
               <Button color="danger" size="lg" isLoading={isLoading} onPress={handleSubmit}
                 startContent={!isLoading && <AcademicCapIcon className="w-5 h-5" />}>
-                Crear Curso Cerrado
+                {isEditMode ? "Guardar y continuar" : "Crear Curso Cerrado"}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {paso === 4 && (
+          <div className="space-y-5">
+
+            {/* Banner: Curso + Empresa */}
+            <Card className="border-2 border-success-200 bg-gradient-to-r from-success-50 to-emerald-50">
+              <CardBody className="py-4 px-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-success-600" />
+                  <p className="text-sm font-bold text-success-700">
+                    {isEditMode ? "Curso cerrado" : "Curso creado exitosamente"}
+                  </p>
+                </div>
+                <Divider className="bg-success-200" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2 rounded-lg bg-white/70 border border-success-100 p-3">
+                    <AcademicCapIcon className="w-4 h-4 text-success-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-default-400 font-medium uppercase tracking-wide">Curso</p>
+                      <p className="text-sm font-semibold text-default-800 leading-tight truncate">{form.nombre}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-lg bg-white/70 border border-success-100 p-3">
+                    <BuildingOffice2Icon className="w-4 h-4 text-success-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-default-400 font-medium uppercase tracking-wide">Empresa</p>
+                      <p className="text-sm font-semibold text-default-800 leading-tight truncate">{empresaSel?.nombre ?? "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Contador de progreso */}
+            <Card className={`border-2 transition-all duration-300 ${
+              participantesRegistrados >= numP
+                ? "border-success-300 bg-success-50"
+                : "border-primary-200 bg-gradient-to-r from-primary-50 to-blue-50"
+            }`}>
+              <CardBody className="py-4 px-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UsersIcon className="w-5 h-5 text-primary-600" />
+                    <p className="text-sm font-bold text-default-700">Progreso de registro</p>
+                  </div>
+                  <Chip
+                    size="lg"
+                    variant="flat"
+                    color={participantesRegistrados >= numP ? "success" : "primary"}
+                    className="font-bold"
+                  >
+                    {participantesRegistrados} / {numP}
+                  </Chip>
+                </div>
+                <Progress
+                  value={(participantesRegistrados / numP) * 100}
+                  color={participantesRegistrados >= numP ? "success" : "primary"}
+                  size="md"
+                  className="w-full"
+                />
+                <p className="text-xs text-default-500 text-center">
+                  {participantesRegistrados >= numP
+                    ? "¡Todos los participantes han sido registrados!"
+                    : `Faltan ${numP - participantesRegistrados} participante${numP - participantesRegistrados !== 1 ? "s" : ""} por registrar`
+                  }
+                </p>
+              </CardBody>
+            </Card>
+
+            {/* Formulario de participante */}
+            {participantesRegistrados < numP && (
+              <Card className="border border-default-200">
+                <CardBody className="space-y-4 py-5 px-5">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-primary-100 rounded-lg">
+                      <UserIcon className="w-4 h-4 text-primary-600" />
+                    </div>
+                    <h3 className="text-sm font-bold text-default-800">
+                      Participante #{participantesRegistrados + 1}
+                    </h3>
+                    <Chip size="sm" variant="flat" color="default" className="ml-auto">
+                      {numP - participantesRegistrados} restante{numP - participantesRegistrados !== 1 ? "s" : ""}
+                    </Chip>
+                  </div>
+
+                  <Divider />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Nombre(s)"
+                      isRequired
+                      size="lg"
+                      value={participanteForm.nombre}
+                      onValueChange={(v) => handleParticipanteChange("nombre", v)}
+                      isInvalid={!!participanteErrors.nombre}
+                      errorMessage={participanteErrors.nombre}
+                      placeholder="Ej: Juan Carlos"
+                      autoFocus
+                    />
+                    <Input
+                      label="Apellido Paterno"
+                      isRequired
+                      size="lg"
+                      value={participanteForm.apellidoPaterno}
+                      onValueChange={(v) => handleParticipanteChange("apellidoPaterno", v)}
+                      isInvalid={!!participanteErrors.apellidoPaterno}
+                      errorMessage={participanteErrors.apellidoPaterno}
+                      placeholder="Ej: García"
+                    />
+                    <Input
+                      label="Apellido Materno"
+                      size="lg"
+                      value={participanteForm.apellidoMaterno}
+                      onValueChange={(v) => handleParticipanteChange("apellidoMaterno", v)}
+                      placeholder="Ej: López"
+                    />
+                    <Input
+                      type="date"
+                      label="Fecha de nacimiento"
+                      isRequired
+                      size="lg"
+                      value={participanteForm.fechaNacimiento}
+                      onChange={(e) => handleParticipanteChange("fechaNacimiento", e.target.value)}
+                      isInvalid={!!participanteErrors.fechaNacimiento}
+                      errorMessage={participanteErrors.fechaNacimiento}
+                    />
+                    <Input
+                      label="Correo electrónico"
+                      size="lg"
+                      type="email"
+                      value={participanteForm.correo}
+                      onValueChange={(v) => handleParticipanteChange("correo", v)}
+                      placeholder="correo@ejemplo.com"
+                    />
+                    <Input
+                      label="Celular"
+                      size="lg"
+                      value={participanteForm.celular}
+                      onValueChange={(v) => handleParticipanteChange("celular", v)}
+                      placeholder="614 123 4567"
+                    />
+                    <div className="flex items-center">
+                      <Switch
+                        isSelected={participanteForm.esAfiliado}
+                        onValueChange={(v) => handleParticipanteChange("esAfiliado", v)}
+                        color="success"
+                        size="lg"
+                      >
+                        <span className="text-sm font-medium">
+                          {participanteForm.esAfiliado ? "Afiliado" : "No afiliado"}
+                        </span>
+                      </Switch>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Lista de participantes registrados */}
+            {participantesLista.length > 0 && (
+              <Card className="border border-default-200">
+                <CardBody className="py-3 px-5">
+                  <p className="text-xs font-semibold text-default-500 uppercase tracking-wide mb-2">
+                    Participantes registrados
+                  </p>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {participantesLista.map((p, i) => (
+                      <div key={p.id ?? i} className="flex items-center gap-2 text-sm">
+                        <div className="w-6 h-6 rounded-full bg-success-100 flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-success-600">{i + 1}</span>
+                        </div>
+                        <span className="text-default-700">
+                          {p.nombre} {p.apellidoPaterno} {p.apellidoMaterno ?? ""}
+                        </span>
+                        {p.esAfiliado && (
+                          <Chip size="sm" color="success" variant="flat" className="ml-auto">Afiliado</Chip>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Botones */}
+            <div className="flex justify-between gap-3 pt-4 border-t border-default-200">
+              {participantesRegistrados < numP ? (
+                <>
+                  <Button
+                    variant="flat"
+                    size="lg"
+                    color="warning"
+                    onPress={() => {
+                      sileo.warning({
+                        title: "Registro incompleto",
+                        description: `Faltan ${numP - participantesRegistrados} participantes. Puedes continuar después desde el detalle del curso.`,
+                      });
+                      onClose();
+                    }}
+                  >
+                    Terminar después
+                  </Button>
+                  <Button
+                    color="primary"
+                    size="lg"
+                    isLoading={isSubmittingParticipante}
+                    onPress={handleRegistrarParticipante}
+                    startContent={!isSubmittingParticipante && <UserPlusIcon className="w-5 h-5" />}
+                  >
+                    Registrar participante {participantesRegistrados + 1}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  color="success"
+                  size="lg"
+                  className="w-full"
+                  onPress={onClose}
+                  startContent={<CheckCircleIcon className="w-5 h-5" />}
+                >
+                  Finalizar
+                </Button>
+              )}
             </div>
           </div>
         )}

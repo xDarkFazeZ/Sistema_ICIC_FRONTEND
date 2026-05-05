@@ -20,6 +20,8 @@ import { sileo } from "sileo";
 
 // Importar modales
 import CursoModal from "../components/modals/Cursos/cursosModal";
+import CursoCerradoModal from "../components/modals/Cursos/CursoCerradoModal";
+import TipoCursoModal from "../components/modals/Cursos/TipoCursoModal";
 import InstructorModal from "../components/modals/Instructor/instructorModal";
 import ParticipanteModal from "../components/modals/Participante/participanteModal";
 import ParticipanteDetalleModal from "../components/modals/Participante/participanteDetalleModal";
@@ -57,7 +59,9 @@ export default function Dashboard() {
 
 
   // Estados para los modales
+  const [tipoCursoModalAbierto, setTipoCursoModalAbierto] = useState(false);
   const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
+  const [modalCursoCerradoOpen, setModalCursoCerradoOpen] = useState(false);
   const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
   const [modalParticipanteAbierto, setModalParticipanteAbierto] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -96,16 +100,37 @@ export default function Dashboard() {
     setTimeout(() => { logout(); navigate("/login"); }, 800);
   };
 
-  // Manejadores de éxito para los modales
-  const handleCursoCreado = async (nuevoCurso: any) => {
-    console.log("Curso creado:", nuevoCurso);
-    setModalCursoAbierto(false);
+  // Selección de tipo de curso
+  const handleSelectTipoCurso = (tipo: "ABIERTO" | "CERRADO") => {
+    setTipoCursoModalAbierto(false);
+    if (tipo === "ABIERTO") {
+      setModalCursoAbierto(true);
+    } else {
+      setModalCursoCerradoOpen(true);
+    }
+  };
+
+  const recargarDashboard = async () => {
     try {
       const data = await dashboardService.getDashboardData();
       setDashboardData(data);
     } catch (error) {
       console.error('Error recargando datos:', error);
     }
+  };
+
+  // Manejadores de éxito para los modales
+  const handleCursoCreado = async (nuevoCurso: any) => {
+    setModalCursoAbierto(false);
+    await recargarDashboard();
+  };
+
+  const handleCursoCerradoCreado = async (data: any) => {
+    const { crearCurso } = await import("../services/cursoService");
+    const cursoCreado = await crearCurso(data);
+    sileo.success({ title: "Curso creado correctamente", description: cursoCreado.nombre });
+    await recargarDashboard();
+    return cursoCreado;
   };
 
   const handleInstructorCreado = async (nuevoInstructor: any) => {
@@ -271,7 +296,7 @@ export default function Dashboard() {
               {/* Alta de Curso */}
               <Card
                 isPressable
-                onPress={() => setModalCursoAbierto(true)}
+                onPress={() => setTipoCursoModalAbierto(true)}
                 className="p-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-xl hover:border-red-300 dark:hover:border-red-800 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-start gap-4">
@@ -445,10 +470,22 @@ export default function Dashboard() {
       </main>
 
       {/* MODALES - Todos dentro del div principal */}
+      <TipoCursoModal
+        isOpen={tipoCursoModalAbierto}
+        onClose={() => setTipoCursoModalAbierto(false)}
+        onSelect={handleSelectTipoCurso}
+      />
+
       <CursoModal
         isOpen={modalCursoAbierto}
         onClose={() => setModalCursoAbierto(false)}
         onSuccess={handleCursoCreado}
+      />
+
+      <CursoCerradoModal
+        isOpen={modalCursoCerradoOpen}
+        onClose={() => { setModalCursoCerradoOpen(false); recargarDashboard(); }}
+        onCursoCreado={handleCursoCerradoCreado}
       />
 
       <InstructorModal

@@ -6,6 +6,11 @@ export const crearInscripcion = async (data: any) => {
   return res.data;
 };
 
+export const crearInscripcionCursoCerrado = async (data: any) => {
+  const res = await apiClient.post("/inscripciones/cerrado", data);
+  return res.data;
+};
+
 export const actualizarInscripcion = async (id: number, data: any) => {
   const res = await apiClient.put(`/inscripciones/${id}`, data);
   return res.data;

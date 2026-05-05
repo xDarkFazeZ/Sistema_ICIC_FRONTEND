@@ -12,7 +12,7 @@ import {
   BuildingLibraryIcon,
   GiftIcon,
   TagIcon,
-} from "@heroic/react/24/outline";
+} from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 import ModalForm from "../../common/modalForm";
@@ -21,7 +21,7 @@ import {
   METODOS_CERRADO,
   ESTADOS_PAGO,
   PERIODICIDADES,
-} from "../../../hooks/Useinscripcioncerrada";
+} from "../../../hooks/UseInscripcionCerrada";
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────
 
