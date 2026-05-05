@@ -46,6 +46,7 @@ import {
   ExclamationTriangleIcon as ExclamationOutline,
   ArrowPathIcon,
   BookOpenIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import {
   ExclamationTriangleIcon,
@@ -159,6 +160,7 @@ function ModeCard({
   label,
   description,
   onPress,
+  disabled = false,
 }: {
   active: boolean;
   color?: "danger" | "warning" | "success";
@@ -166,6 +168,7 @@ function ModeCard({
   label: string;
   description: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   const activeClass =
     color === "danger"
@@ -181,12 +184,17 @@ function ModeCard({
 
   return (
     <Card
-      isPressable
-      onPress={onPress}
-      className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] bg-white dark:bg-gray-700 ${active
+      isPressable={!disabled}
+      onPress={disabled ? undefined : onPress}
+      className={`border-2 transition-all duration-300 bg-white dark:bg-gray-700 ${
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "cursor-pointer hover:scale-[1.02]"
+      } ${
+        active
           ? activeClass
           : "border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 hover:shadow-md"
-        }`}
+      }`}
     >
       <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
         <div className={`p-2 rounded-full ${active ? `bg-${color}/10` : "bg-gray-100 dark:bg-gray-600"}`}>
@@ -212,7 +220,9 @@ function DuplicadoModal({
   isLoading,
 }: {
   isOpen: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   participante: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cursoSeleccionado: any | null;
   onUsarExistente: () => void;
   onCrearNuevo: () => void;
@@ -224,6 +234,7 @@ function DuplicadoModal({
   const nombreCompleto = [participante.nombre, participante.apellidoPaterno, participante.apellidoMaterno]
     .filter(Boolean)
     .join(" ");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cursosAnteriores: any[] = participante.inscripciones ?? [];
 
   return (
@@ -285,6 +296,7 @@ function DuplicadoModal({
                   Cursos anteriores ({cursosAnteriores.length})
                 </p>
                 <div className="space-y-1 max-h-28 overflow-y-auto">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {cursosAnteriores.map((ins: any) => (
                     <div
                       key={ins.id}
@@ -315,6 +327,7 @@ function DuplicadoModal({
           </div>
 
           {cursoSeleccionado &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             cursosAnteriores.some((i: any) => i.cursoId === cursoSeleccionado.id) && (
               <div className="flex items-start gap-2 rounded-xl bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-700 p-3">
                 <ExclamationOutline className="w-4 h-4 text-danger-600 dark:text-danger-400 flex-shrink-0 mt-0.5" />
@@ -385,9 +398,13 @@ function DuplicadoModal({
 interface ParticipanteModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (participante: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   participanteToEdit?: any;
   cursoIdParaAsignar?: number | null;
+  /** Cuando viene de un curso cerrado, la empresa queda fija y no se puede cambiar */
+  empresaIdPreasignada?: number | null;
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -397,35 +414,49 @@ export default function ParticipanteModal({
   onSuccess,
   participanteToEdit,
   cursoIdParaAsignar,
+  empresaIdPreasignada,
 }: ParticipanteModalProps) {
   const { setOrigen } = useEmpresaModal();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [form, setForm] = useState<Record<string, any>>({ esAfiliado: false });
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [duplicadoDetectado, setDuplicadoDetectado] = useState<any | null>(null);
 
   const [inscripcionModalOpen, setInscripcionModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [inscripcionData, setInscripcionData] = useState<any>(null);
   const [empresaModalOpen, setEmpresaModalOpen] = useState(false);
 
   const [empresaMode, setEmpresaMode] = useState<EmpresaMode>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
   const [empresaSearch, setEmpresaSearch] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [empresaCompleta, setEmpresaCompleta] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [empresaCreada, setEmpresaCreada] = useState<any | null>(null);
 
   const [cursoMode, setCursoMode] = useState<CursoMode>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cursos, setCursos] = useState<any[]>([]);
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [cursoSearch, setCursoSearch] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeouts = useRef<Record<string, any>>({});
+
+  // ── ¿Viene de curso cerrado? ──────────────────────────────────────────────
+  const empresaFija = !!empresaIdPreasignada;
 
   // ── Reset / pre-carga al abrir ────────────────────────────────────────────
   useEffect(() => {
@@ -451,6 +482,18 @@ export default function ParticipanteModal({
       return;
     }
 
+    // ── Caso: empresa pre-asignada desde curso cerrado ────────────────────
+    if (empresaIdPreasignada) {
+      setEmpresaMode("buscar"); // modo buscar pero bloqueado
+      obtenerEmpresa(empresaIdPreasignada)
+        .then((emp) => {
+          setEmpresaCompleta(emp);
+          setEmpresaSeleccionada(emp);
+          setForm((prev) => ({ ...prev, empresaId: emp.id }));
+        })
+        .catch(console.error);
+    }
+
     if (participanteToEdit) {
       setForm({
         ...participanteToEdit,
@@ -458,7 +501,7 @@ export default function ParticipanteModal({
           ? participanteToEdit.fechaNacimiento.split("T")[0]
           : null,
       });
-      if (participanteToEdit.empresaId) {
+      if (participanteToEdit.empresaId && !empresaIdPreasignada) {
         setEmpresaMode("buscar");
         obtenerEmpresa(participanteToEdit.empresaId)
           .then((emp) => {
@@ -491,7 +534,7 @@ export default function ParticipanteModal({
         })
         .catch(console.error);
     }
-  }, [isOpen, participanteToEdit, cursoIdParaAsignar]);
+  }, [isOpen, participanteToEdit, cursoIdParaAsignar, empresaIdPreasignada]);
 
   useEffect(() => {
     if (form.empresaId && !empresaCompleta) {
@@ -531,6 +574,8 @@ export default function ParticipanteModal({
 
   // ── Handlers de modo ─────────────────────────────────────────────────────
   const handleEmpresaMode = (mode: EmpresaMode) => {
+    // Bloquear cambio si la empresa viene pre-asignada
+    if (empresaFija) return;
     if (mode === empresaMode) return;
     setEmpresaMode(mode);
     setEmpresas([]);
@@ -541,6 +586,7 @@ export default function ParticipanteModal({
     handleChange("empresaId", null);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEmpresaCreada = (empresa: any) => {
     setEmpresaCreada(empresa);
     setEmpresaCompleta(empresa);
@@ -558,6 +604,7 @@ export default function ParticipanteModal({
   };
 
   // ── Handlers de campo ────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (field: string, value: any) => {
     const v = value === "" ? null : value;
     setForm((prev) => ({ ...prev, [field]: v }));
@@ -568,7 +615,9 @@ export default function ParticipanteModal({
   };
 
   // ── Payload ──────────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildPayload = (extras: Record<string, any> = {}) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: Record<string, any> = {
       esAfiliado: form.esAfiliado ?? false,
       ...extras,
@@ -582,11 +631,14 @@ export default function ParticipanteModal({
         payload[campo] = form[campo];
       }
     }
-    if (form.empresaId) payload.empresaId = Number(form.empresaId);
+    // Empresa: si viene pre-asignada tiene prioridad, si no usa la del form
+    const empId = empresaIdPreasignada ?? form.empresaId;
+    if (empId) payload.empresaId = Number(empId);
     return payload;
   };
 
   // ── Post-guardado ────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const afterParticipante = (participante: any) => {
     if (cursoMode === "buscar" && cursoSeleccionado) {
       setInscripcionData({ participante, curso: cursoSeleccionado });
@@ -599,20 +651,31 @@ export default function ParticipanteModal({
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!empresaMode) {
-      sileo.warning({
-        title: "Sección Empresa incompleta",
-        description: "Debes seleccionar una opción: Buscar empresa, Crear empresa o Sin empresa.",
-      });
-      return;
+    // Si la empresa es fija, no validamos el modo empresa (ya está resuelta)
+    if (!empresaFija) {
+      if (!empresaMode) {
+        sileo.warning({
+          title: "Sección Empresa incompleta",
+          description: "Debes seleccionar una opción: Buscar empresa, Crear empresa o Sin empresa.",
+        });
+        return;
+      }
+      if (empresaMode === "buscar" && !form.empresaId) {
+        sileo.warning({
+          title: "Empresa no seleccionada",
+          description: "Buscaste una empresa pero no seleccionaste ninguna.",
+        });
+        return;
+      }
+      if (empresaMode === "crear" && !empresaCreada) {
+        sileo.warning({
+          title: "Empresa sin crear",
+          description: 'Haz clic en "Crear empresa" antes de guardar.',
+        });
+        return;
+      }
     }
-    if (empresaMode === "buscar" && !form.empresaId) {
-      sileo.warning({
-        title: "Empresa no seleccionada",
-        description: "Buscaste una empresa pero no seleccionaste ninguna.",
-      });
-      return;
-    }
+
     if (!cursoMode) {
       sileo.warning({
         title: "Sección Curso incompleta",
@@ -624,13 +687,6 @@ export default function ParticipanteModal({
       sileo.warning({
         title: "Curso no seleccionado",
         description: "Buscaste un curso pero no seleccionaste ninguno.",
-      });
-      return;
-    }
-    if (empresaMode === "crear" && !empresaCreada) {
-      sileo.warning({
-        title: "Empresa sin crear",
-        description: 'Haz clic en "Crear empresa" antes de guardar.',
       });
       return;
     }
@@ -648,9 +704,11 @@ export default function ParticipanteModal({
         sileo.success({ title: "¡Registro exitoso!", description: "El participante fue guardado correctamente." });
         afterParticipante(response.data || response);
       }
-    } catch (err: any) {
-      const status = err?.response?.status;
-      const data = err?.response?.data;
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      const status = error?.response?.status;
+      const data   = error?.response?.data;
 
       if (status === 409 && data?.code === "PARTICIPANTE_DUPLICADO") {
         setDuplicadoDetectado(data.data);
@@ -667,7 +725,7 @@ export default function ParticipanteModal({
         return;
       }
 
-      const msg = data?.message ?? data?.error ?? err?.message ?? "Error desconocido";
+      const msg = data?.message ?? data?.error ?? error?.message ?? "Error desconocido";
       setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg, null, 2));
       sileo.error({ title: "Error al registrar", description: "Revisa los datos e inténtalo de nuevo." });
     } finally {
@@ -690,8 +748,9 @@ export default function ParticipanteModal({
       const response = await crearParticipante(buildPayload({ forzar: true }));
       sileo.success({ title: "¡Registro exitoso!", description: "El participante fue guardado correctamente." });
       afterParticipante(response.data || response);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? "Error desconocido";
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const msg = (err as any)?.response?.data?.message ?? (err as any)?.message ?? "Error desconocido";
       setSubmitError(typeof msg === "string" ? msg : "Error al crear participante");
       sileo.error({ title: "Error al registrar", description: "Revisa los datos e inténtalo de nuevo." });
     } finally {
@@ -716,8 +775,9 @@ export default function ParticipanteModal({
     errorMessage: "text-rose-500 dark:text-rose-400 text-[11px] font-medium mt-1",
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inp = (field: string, label: string, required = false, extra: any = {}) => ({
-    label: (<RequiredLabel label={label} required={required} />) as any,
+    label: (<RequiredLabel label={label} required={required} />) as never,
     size: "sm" as const,
     variant: "bordered" as const,
     radius: "lg" as const,
@@ -806,7 +866,7 @@ export default function ParticipanteModal({
                 value={form.apellidoMaterno ?? ""}
               />
               <DatePicker
-                label={(<RequiredLabel label="Fecha de Nacimiento" required />) as any}
+                label={(<RequiredLabel label="Fecha de Nacimiento" required />) as never}
                 size="sm"
                 variant="bordered"
                 radius="lg"
@@ -927,7 +987,15 @@ export default function ParticipanteModal({
             <div className="flex items-center gap-2">
               <Ic.Building />
               <h3 className="text-sm font-semibold text-slate-700 dark:text-gray-200">Empresa</h3>
-              {form.esAfiliado ? (
+              {/* Indicador especial cuando viene pre-asignada */}
+              {empresaFija ? (
+                <Chip
+                  size="sm" variant="flat" color="primary" className="ml-2"
+                  startContent={<LockClosedIcon className="w-3 h-3" />}
+                >
+                  Asignada por curso cerrado
+                </Chip>
+              ) : form.esAfiliado ? (
                 <Chip size="sm" variant="flat" color="warning" className="ml-2">
                   Requerido para afiliados
                 </Chip>
@@ -939,223 +1007,255 @@ export default function ParticipanteModal({
             </div>
             <Divider className="bg-gray-200 dark:bg-gray-600" />
 
-            {form.esAfiliado && (
-              <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 p-3">
-                <ExclamationTriangleIcon className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-warning-700 dark:text-warning-400 font-medium">
-                  El participante es afiliado — debes asociarle una empresa.
-                </p>
-              </div>
-            )}
-
-            {empresaCompleta && (
-              <Card className="bg-primary-50/30 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800">
-                <CardBody className="flex flex-row items-center gap-4">
-                  <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                    <CurrencyDollarIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            {/* Empresa fija desde curso cerrado: solo mostrar info, sin controles */}
+            {empresaFija ? (
+              empresaCompleta ? (
+                <div className="flex items-center gap-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 p-4">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                    <LockClosedIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-800 dark:text-gray-100">{empresaCompleta.nombre}</p>
-                    <div className="flex gap-4 mt-1 text-xs">
-                      <span className="text-primary-600 dark:text-primary-400">
-                        Saldo FECAP: ${empresaCompleta.saldoFecapDisponible?.toFixed(2) ?? "0.00"}
-                      </span>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-
-            <div className="grid grid-cols-3 gap-3">
-              <ModeCard
-                active={empresaMode === "buscar"}
-                color="danger"
-                icon={<MagnifyingGlassIcon className="w-6 h-6" />}
-                label="Buscar empresa"
-                description="Selecciona de la base"
-                onPress={() => handleEmpresaMode("buscar")}
-              />
-              <ModeCard
-                active={empresaMode === "crear"}
-                color="success"
-                icon={<PlusCircleIcon className="w-6 h-6" />}
-                label="Crear empresa"
-                description="Registra una nueva"
-                onPress={() => handleEmpresaMode("crear")}
-              />
-              <ModeCard
-                active={empresaMode === "despues"}
-                color="warning"
-                icon={<ClockIcon className="w-6 h-6" />}
-                label="Sin empresa"
-                description="No aplica"
-                onPress={() => handleEmpresaMode("despues")}
-              />
-            </div>
-
-            {empresaMode === "buscar" && (
-              <div className="mt-3">
-                {empresaSeleccionada && form.empresaId ? (
-                  <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700 p-4">
-                    <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-success-700 dark:text-success-300 font-semibold">
-                        {empresaSeleccionada.nombre}
-                      </p>
-                      {empresaSeleccionada.rfc && (
-                        <p className="text-xs text-success-600 dark:text-success-400 mt-0.5">
-                          RFC: {empresaSeleccionada.rfc}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      color="success"
-                      onPress={() => {
-                        setEmpresaSeleccionada(null);
-                        setEmpresaCompleta(null);
-                        handleChange("empresaId", null);
-                        setEmpresaSearch("");
-                        setEmpresas([]);
-                      }}
-                    >
-                      Cambiar
-                    </Button>
-                  </div>
-                ) : (
-                  <Autocomplete
-                    label={(<RequiredLabel label="Buscar empresa" required={form.esAfiliado} />) as any}
-                    size="sm"
-                    variant="bordered"
-                    radius="lg"
-                    inputValue={empresaSearch}
-                    isInvalid={!!(touched.empresaId && errors.empresaId)}
-                    errorMessage={touched.empresaId ? (errors.empresaId ?? undefined) : undefined}
-                    onInputChange={buscarEmpresasDebounced}
-                    onSelectionChange={(key) => {
-                      if (!key) {
-                        handleChange("empresaId", null);
-                        setEmpresaSeleccionada(null);
-                        setEmpresaCompleta(null);
-                        return;
-                      }
-                      const found = empresas.find((e) => String(e.id) === String(key));
-                      if (found) {
-                        handleChange("empresaId", Number(key));
-                        setEmpresaSeleccionada(found);
-                        obtenerEmpresa(Number(key)).then(setEmpresaCompleta).catch(console.error);
-                      }
-                      setTouched((p) => ({ ...p, empresaId: true }));
-                    }}
-                    isLoading={loadingEmpresas}
-                    placeholder="Escribe el nombre de la empresa..."
-                    classNames={acCN}
-                    inputProps={acInp}
-                    listboxProps={{
-                      emptyContent: loadingEmpresas ? (
-                        <div className="flex justify-center py-5">
-                          <Spinner size="sm" color="primary" />
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 dark:text-gray-500 text-center py-4">
-                          Sin resultados — escribe para buscar
-                        </p>
-                      ),
-                    }}
-                  >
-                    {empresas.map((emp) => (
-                      <AutocompleteItem key={emp.id} textValue={emp.nombre}>
-                        <div className="flex items-center gap-2.5 py-1">
-                          <Avatar
-                            name={emp.nombre.charAt(0)}
-                            size="sm"
-                            className="w-7 h-7 text-tiny bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold"
-                          />
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">{emp.nombre}</p>
-                            {emp.rfc && <p className="text-[11px] text-slate-500 dark:text-gray-400">{emp.rfc}</p>}
-                          </div>
-                        </div>
-                      </AutocompleteItem>
-                    ))}
-                  </Autocomplete>
-                )}
-              </div>
-            )}
-
-            {empresaMode === "crear" && (
-              <div className="mt-3">
-                {empresaCreada ? (
-                  <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700 p-4">
-                    <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-success-700 dark:text-success-300 font-semibold">
-                        {empresaCreada.nombre}
-                        <Chip size="sm" color="success" variant="flat" className="ml-2">
-                          Creada y asignada
-                        </Chip>
-                      </p>
-                      <p className="text-xs text-success-600 dark:text-success-400 mt-0.5">
-                        RFC: {empresaCreada.rfc}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      color="success"
-                      onPress={() => {
-                        setEmpresaCreada(null);
-                        setEmpresaCompleta(null);
-                        handleChange("empresaId", null);
-                      }}
-                    >
-                      Cambiar
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-900/10 p-4 space-y-3">
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                      <PlusCircleIcon className="w-4 h-4" />
-                      Se abrirá un formulario para registrar la nueva empresa
+                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                      {empresaCompleta.nombre}
                     </p>
-                    <Button
-                      color="success"
-                      variant="flat"
-                      size="sm"
-                      startContent={<PlusCircleIcon className="w-4 h-4" />}
-                      onPress={() => {
-                        setOrigen("participante");
-                        setEmpresaModalOpen(true);
-                      }}
-                      className="w-full font-semibold"
-                    >
-                      Crear nueva empresa
-                    </Button>
+                    <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">
+                      RFC: {empresaCompleta.rfc}
+                    </p>
+                    {empresaCompleta.saldoFecapDisponible !== undefined && (
+                      <p className="text-xs text-primary-500 mt-0.5">
+                        Saldo FECAP: ${empresaCompleta.saldoFecapDisponible.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <Chip size="sm" variant="flat" color="primary">Fija</Chip>
+                </div>
+              ) : (
+                <div className="flex justify-center py-4">
+                  <Spinner size="sm" color="primary" />
+                </div>
+              )
+            ) : (
+              /* Controles normales cuando NO viene pre-asignada */
+              <>
+                {form.esAfiliado && (
+                  <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 p-3">
+                    <ExclamationTriangleIcon className="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-warning-700 dark:text-warning-400 font-medium">
+                      El participante es afiliado — debes asociarle una empresa.
+                    </p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {empresaMode === "despues" && (
-              <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 p-4 mt-3">
-                <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 dark:text-warning-400 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-warning-700 dark:text-warning-300">Sin empresa</p>
-                  <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
-                    El participante se guardará sin empresa asociada.
-                  </p>
+                {empresaCompleta && (
+                  <Card className="bg-primary-50/30 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800">
+                    <CardBody className="flex flex-row items-center gap-4">
+                      <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                        <CurrencyDollarIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-800 dark:text-gray-100">{empresaCompleta.nombre}</p>
+                        <div className="flex gap-4 mt-1 text-xs">
+                          <span className="text-primary-600 dark:text-primary-400">
+                            Saldo FECAP: ${empresaCompleta.saldoFecapDisponible?.toFixed(2) ?? "0.00"}
+                          </span>
+                        </div>
+                      </div>
+                    </CardBody>
+                  </Card>
+                )}
+
+                <div className="grid grid-cols-3 gap-3">
+                  <ModeCard
+                    active={empresaMode === "buscar"}
+                    color="danger"
+                    icon={<MagnifyingGlassIcon className="w-6 h-6" />}
+                    label="Buscar empresa"
+                    description="Selecciona de la base"
+                    onPress={() => handleEmpresaMode("buscar")}
+                  />
+                  <ModeCard
+                    active={empresaMode === "crear"}
+                    color="success"
+                    icon={<PlusCircleIcon className="w-6 h-6" />}
+                    label="Crear empresa"
+                    description="Registra una nueva"
+                    onPress={() => handleEmpresaMode("crear")}
+                  />
+                  <ModeCard
+                    active={empresaMode === "despues"}
+                    color="warning"
+                    icon={<ClockIcon className="w-6 h-6" />}
+                    label="Sin empresa"
+                    description="No aplica"
+                    onPress={() => handleEmpresaMode("despues")}
+                  />
                 </div>
-              </div>
-            )}
 
-            {!empresaMode && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
-                <ExclamationTriangleIcon className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
-                <p className="text-sm text-rose-600 dark:text-rose-400 font-medium">
-                  Debes seleccionar una opción para continuar
-                </p>
-              </div>
+                {empresaMode === "buscar" && (
+                  <div className="mt-3">
+                    {empresaSeleccionada && form.empresaId ? (
+                      <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700 p-4">
+                        <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-success-700 dark:text-success-300 font-semibold">
+                            {empresaSeleccionada.nombre}
+                          </p>
+                          {empresaSeleccionada.rfc && (
+                            <p className="text-xs text-success-600 dark:text-success-400 mt-0.5">
+                              RFC: {empresaSeleccionada.rfc}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          color="success"
+                          onPress={() => {
+                            setEmpresaSeleccionada(null);
+                            setEmpresaCompleta(null);
+                            handleChange("empresaId", null);
+                            setEmpresaSearch("");
+                            setEmpresas([]);
+                          }}
+                        >
+                          Cambiar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Autocomplete
+                        label={(<RequiredLabel label="Buscar empresa" required={form.esAfiliado} />) as never}
+                        size="sm"
+                        variant="bordered"
+                        radius="lg"
+                        inputValue={empresaSearch}
+                        isInvalid={!!(touched.empresaId && errors.empresaId)}
+                        errorMessage={touched.empresaId ? (errors.empresaId ?? undefined) : undefined}
+                        onInputChange={buscarEmpresasDebounced}
+                        onSelectionChange={(key) => {
+                          if (!key) {
+                            handleChange("empresaId", null);
+                            setEmpresaSeleccionada(null);
+                            setEmpresaCompleta(null);
+                            return;
+                          }
+                          const found = empresas.find((e) => String(e.id) === String(key));
+                          if (found) {
+                            handleChange("empresaId", Number(key));
+                            setEmpresaSeleccionada(found);
+                            obtenerEmpresa(Number(key)).then(setEmpresaCompleta).catch(console.error);
+                          }
+                          setTouched((p) => ({ ...p, empresaId: true }));
+                        }}
+                        isLoading={loadingEmpresas}
+                        placeholder="Escribe el nombre de la empresa..."
+                        classNames={acCN}
+                        inputProps={acInp}
+                        listboxProps={{
+                          emptyContent: loadingEmpresas ? (
+                            <div className="flex justify-center py-5">
+                              <Spinner size="sm" color="primary" />
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 dark:text-gray-500 text-center py-4">
+                              Sin resultados — escribe para buscar
+                            </p>
+                          ),
+                        }}
+                      >
+                        {empresas.map((emp) => (
+                          <AutocompleteItem key={emp.id} textValue={emp.nombre}>
+                            <div className="flex items-center gap-2.5 py-1">
+                              <Avatar
+                                name={emp.nombre.charAt(0)}
+                                size="sm"
+                                className="w-7 h-7 text-tiny bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-gray-100">{emp.nombre}</p>
+                                {emp.rfc && <p className="text-[11px] text-slate-500 dark:text-gray-400">{emp.rfc}</p>}
+                              </div>
+                            </div>
+                          </AutocompleteItem>
+                        ))}
+                      </Autocomplete>
+                    )}
+                  </div>
+                )}
+
+                {empresaMode === "crear" && (
+                  <div className="mt-3">
+                    {empresaCreada ? (
+                      <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700 p-4">
+                        <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-success-700 dark:text-success-300 font-semibold">
+                            {empresaCreada.nombre}
+                            <Chip size="sm" color="success" variant="flat" className="ml-2">
+                              Creada y asignada
+                            </Chip>
+                          </p>
+                          <p className="text-xs text-success-600 dark:text-success-400 mt-0.5">
+                            RFC: {empresaCreada.rfc}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          color="success"
+                          onPress={() => {
+                            setEmpresaCreada(null);
+                            setEmpresaCompleta(null);
+                            handleChange("empresaId", null);
+                          }}
+                        >
+                          Cambiar
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-emerald-200 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-900/10 p-4 space-y-3">
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                          <PlusCircleIcon className="w-4 h-4" />
+                          Se abrirá un formulario para registrar la nueva empresa
+                        </p>
+                        <Button
+                          color="success"
+                          variant="flat"
+                          size="sm"
+                          startContent={<PlusCircleIcon className="w-4 h-4" />}
+                          onPress={() => {
+                            setOrigen("participante");
+                            setEmpresaModalOpen(true);
+                          }}
+                          className="w-full font-semibold"
+                        >
+                          Crear nueva empresa
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {empresaMode === "despues" && (
+                  <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 p-4 mt-3">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 dark:text-warning-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-warning-700 dark:text-warning-300">Sin empresa</p>
+                      <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
+                        El participante se guardará sin empresa asociada.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!empresaMode && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
+                    <ExclamationTriangleIcon className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
+                    <p className="text-sm text-rose-600 dark:text-rose-400 font-medium">
+                      Debes seleccionar una opción para continuar
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -1319,34 +1419,38 @@ export default function ParticipanteModal({
         isLoading={isSubmitting}
       />
 
-      {/* Modal: Crear empresa */}
-      <EmpresaModal
-        isOpen={empresaModalOpen}
-        onClose={() => setEmpresaModalOpen(false)}
-        onSuccess={handleEmpresaCreada}
-      />
-
-      {/* Modal: Inscripción */}
-      {inscripcionData && (
-        <InscripcionModal
-          isOpen={inscripcionModalOpen}
-          onClose={() => {
-            setInscripcionModalOpen(false);
-            setInscripcionData(null);
-            onClose();
-          }}
-          onSuccess={() => {
-            sileo.success({ title: "Inscripción completada" });
-            setInscripcionModalOpen(false);
-            setInscripcionData(null);
-            onSuccess?.(inscripcionData.participante);
-            onClose();
-          }}
-          participante={inscripcionData.participante}
-          curso={inscripcionData.curso}
-          empresa={empresaCompleta}
+      {/* Modal: Crear empresa (solo si no viene pre-asignada) */}
+      {!empresaFija && (
+        <EmpresaModal
+          isOpen={empresaModalOpen}
+          onClose={() => setEmpresaModalOpen(false)}
+          onSuccess={handleEmpresaCreada}
         />
       )}
+
+      {/* Modal: Inscripción */}
+{inscripcionData && (
+  <InscripcionModal
+    isOpen={inscripcionModalOpen}
+    onClose={() => {
+      setInscripcionModalOpen(false);
+      setInscripcionData(null);
+      onClose();
+    }}
+    onSuccess={() => {
+      sileo.success({ title: "Inscripción completada" });
+      setInscripcionModalOpen(false);
+      setInscripcionData(null);
+      onSuccess?.(inscripcionData.participante);
+      onClose();
+    }}
+    participante={inscripcionData.participante}
+    curso={inscripcionData.curso}
+    empresa={empresaCompleta}
+    // ↓ NUEVO: activa el modo simplificado cuando viene de curso cerrado
+    modoCerrado={!!empresaIdPreasignada}
+  />
+)}
     </>
   );
 }

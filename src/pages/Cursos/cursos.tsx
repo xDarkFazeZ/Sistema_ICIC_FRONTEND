@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   Button, Input, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
-  Pagination, Card, CardBody, Tooltip, Skeleton, Badge,
+  Pagination, Card, CardBody, Tooltip, Skeleton,
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from "@heroui/react";
-import { 
+import {
   EllipsisVertical, Plus, UserPlus, CheckCircle, AlertTriangle,
   Search, X, Calendar, User, ToggleLeft, ToggleRight,
-  Trash2, Eye, Pencil, GraduationCap, Users
+  Trash2, Eye, Pencil, GraduationCap, Users, Building2, Globe,
 } from "lucide-react";
 import { sileo } from "sileo";
-import CursoModal from "../../components/modals/Cursos/cursosModal";
-import CursoDetalleModal from "../../components/modals/Cursos/cursosDetalleModal";
-import ParticipanteModal from "../../components/modals/Participante/participanteModal";
+import CursoModal             from "../../components/modals/Cursos/cursosModal";
+import CursoCerradoModal      from "../../components/modals/Cursos/CursoCerradoModal";
+import TipoCursoModal         from "../../components/modals/Cursos/TipoCursoModal";
+import CursoDetalleModal      from "../../components/modals/Cursos/cursosDetalleModal";
+import ParticipanteModal      from "../../components/modals/Participante/participanteModal";
 import SiguientePasoModal, { type SiguientePasoOpcion } from "../../components/common/siguientePasoModal";
-import Sidebar from "../../components/common/Sidebar";
-import { usePermissions } from "../../hooks/usePermissions";
+import Sidebar                from "../../components/common/Sidebar";
+import { usePermissions }     from "../../hooks/usePermissions";
 import {
   listarCursos, crearCurso, actualizarCurso, eliminarCurso,
   activarCurso, desactivarCurso,
@@ -28,6 +30,7 @@ const SKELETON_COUNT = 8;
 export default function Cursos() {
   const { canCreate, canUpdate, canDelete } = usePermissions();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cursos, setCursos]         = useState<any[]>([]);
   const [loading, setLoading]       = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -36,23 +39,31 @@ export default function Cursos() {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch]         = useState("");
 
-  const [modalCursoAbierto, setModalCursoAbierto]   = useState(false);
-  const [detalleAbierto, setDetalleAbierto]         = useState(false);
-  const [cursoSeleccionado, setCursoSeleccionado]   = useState<any | null>(null);
-  const [cursoAEditar, setCursoAEditar]             = useState<any | null>(null);
+  // ── Modales de tipo de curso ──────────────────────────────
+  const [tipoCursoModalAbierto, setTipoCursoModalAbierto]       = useState(false);
+  const [modalCursoAbiertoOpen, setModalCursoAbiertoOpen]       = useState(false);
+  const [modalCursoCerradoOpen, setModalCursoCerradoOpen]       = useState(false);
+
+  const [detalleAbierto, setDetalleAbierto]       = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [cursoAEditar, setCursoAEditar]           = useState<any | null>(null);
 
   const [siguientePasoModalAbierto, setSiguientePasoModalAbierto] = useState(false);
   const [modalParticipanteAbierto, setModalParticipanteAbierto]   = useState(false);
-  const [cursoActivoId, setCursoActivoId]           = useState<number | null>(null);
-  const [cursoRecienCreado, setCursoRecienCreado]   = useState<any | null>(null);
-  const [opcionesSiguientePaso, setOpcionesSiguientePaso] = useState<SiguientePasoOpcion[]>([]);
-  const [tituloSiguientePaso, setTituloSiguientePaso]     = useState("¿Qué deseas hacer ahora?");
-  const [subtituloSiguientePaso, setSubtituloSiguientePaso] = useState<string | undefined>(undefined);
+  const [cursoActivoId, setCursoActivoId]         = useState<number | null>(null);
+  const [opcionesSiguientePaso, setOpcionesSiguientePaso]         = useState<SiguientePasoOpcion[]>([]);
+  const [tituloSiguientePaso, setTituloSiguientePaso]             = useState("¿Qué deseas hacer ahora?");
+  const [subtituloSiguientePaso, setSubtituloSiguientePaso]       = useState<string | undefined>(undefined);
+  // empresa pre-asignada para participantes de curso cerrado
+  const [empresaIdParticipante, setEmpresaIdParticipante]         = useState<number | null>(null);
 
   const [eliminarDialogAbierto, setEliminarDialogAbierto] = useState(false);
-  const [cursoAEliminar, setCursoAEliminar] = useState<{ id: number; nombre: string } | null>(null);
+  const [cursoAEliminar, setCursoAEliminar]               = useState<{ id: number; nombre: string } | null>(null);
 
-  const cargarCursos = async () => {
+  // ─────────────────────────────────────────────────────────
+  const cargarCursos = useCallback(async () => {
     try {
       setLoading(true);
       const res = await listarCursos({ page, limit: 10, search: search || undefined });
@@ -64,70 +75,113 @@ export default function Cursos() {
     } finally {
       setLoading(false);
     }
+  }, [page, search]);
+
+  useEffect(() => { cargarCursos(); }, [cargarCursos]);
+
+  // ─────────────────────────────────────────────────────────
+  // Selección de tipo al crear
+  // ─────────────────────────────────────────────────────────
+  const handleSelectTipo = (tipo: "ABIERTO" | "CERRADO") => {
+    setTipoCursoModalAbierto(false);
+    if (tipo === "ABIERTO") {
+      setCursoAEditar(null);
+      setModalCursoAbiertoOpen(true);
+    } else {
+      setModalCursoCerradoOpen(true);
+    }
   };
 
-  useEffect(() => { cargarCursos(); }, [page, search]);
+  // ─────────────────────────────────────────────────────────
+  // Lógica post-creación compartida
+  // ─────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const postCreacion = (cursoCreado: any) => {
+    cargarCursos();
+    setCursoActivoId(cursoCreado.id);
+    setTituloSiguientePaso("¡Curso creado exitosamente!");
+    setSubtituloSiguientePaso(cursoCreado.nombre);
 
-  const handleCrearCurso = async (data: any) => {
+    sileo.success({ title: "Curso creado correctamente", description: cursoCreado.nombre });
+
+    // Si es cerrado, guardamos la empresa para pre-asignarla
+    if (cursoCreado.tipoCurso === "CERRADO" && cursoCreado.empresaId) {
+      setEmpresaIdParticipante(cursoCreado.empresaId);
+    } else {
+      setEmpresaIdParticipante(null);
+    }
+
+    setOpcionesSiguientePaso([
+      {
+        label: "Asignar participantes",
+        descripcion: "Agrega participantes a este curso ahora",
+        icono: <UserPlus className="w-5 h-5 text-white" />,
+        color: "from-indigo-500 to-indigo-600",
+        onClick: () => setModalParticipanteAbierto(true),
+      },
+      {
+        label: "Ver detalle del curso",
+        descripcion: "Revisa la información del curso creado",
+        icono: <CheckCircle className="w-5 h-5 text-white" />,
+        color: "from-emerald-400 to-teal-500",
+        onClick: () => {
+          setCursoSeleccionado(cursoCreado);
+          setDetalleAbierto(true);
+          setCursoActivoId(null);
+        },
+      },
+    ]);
+    setSiguientePasoModalAbierto(true);
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // Crear curso abierto
+  // ─────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCrearCursoAbierto = async (data: any) => {
     try {
       setModalLoading(true);
-      const cursoCreado = await crearCurso(data);
-      setModalCursoAbierto(false);
-      cargarCursos();
-      setCursoRecienCreado(cursoCreado);
-      setCursoActivoId(cursoCreado.id);
-      setTituloSiguientePaso("¡Curso creado exitosamente!");
-      setSubtituloSiguientePaso(cursoCreado.nombre);
-
-      sileo.success({
-        title: "Curso creado correctamente",
-        description: cursoCreado.nombre,
-      });
-
-      setOpcionesSiguientePaso([
-        {
-          label: "Asignar participantes",
-          descripcion: "Agrega participantes a este curso ahora",
-          icono: <UserPlus className="w-5 h-5 text-white" />,
-          color: "from-indigo-500 to-indigo-600",
-          onClick: () => setModalParticipanteAbierto(true),
-        },
-        {
-          label: "Ver detalle del curso",
-          descripcion: "Revisa la información del curso creado",
-          icono: <CheckCircle className="w-5 h-5 text-white" />,
-          color: "from-emerald-400 to-teal-500",
-          onClick: () => {
-            setCursoSeleccionado(cursoCreado);
-            setDetalleAbierto(true);
-            setCursoActivoId(null);
-            setCursoRecienCreado(null);
-          },
-        },
-      ]);
-      setSiguientePasoModalAbierto(true);
+      const cursoCreado = await crearCurso({ ...data, tipoCurso: "ABIERTO" });
+      setModalCursoAbiertoOpen(false);
+      postCreacion(cursoCreado);
     } catch (error) {
       console.error("Error al crear curso:", error);
-      sileo.error({
-        title: "Error al crear el curso",
-        description: "Inténtalo de nuevo más tarde",
-      });
+      sileo.error({ title: "Error al crear el curso" });
     } finally {
       setModalLoading(false);
     }
   };
 
+  // ─────────────────────────────────────────────────────────
+  // Crear curso cerrado (ya lleva tipoCurso y empresaId)
+  // ─────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCrearCursoCerrado = async (data: any) => {
+    try {
+      setModalLoading(true);
+      const cursoCreado = await crearCurso(data);
+      setModalCursoCerradoOpen(false);
+      postCreacion(cursoCreado);
+    } catch (error) {
+      console.error("Error al crear curso cerrado:", error);
+      sileo.error({ title: "Error al crear el curso cerrado" });
+      throw error; // para que el modal interno pueda manejarlo
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────
+  // Participante creado
+  // ─────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleParticipanteCreado = (respuesta: any) => {
     setModalParticipanteAbierto(false);
     const p = respuesta?.data ?? respuesta;
     const nombreCompleto = `${p?.nombre ?? ""} ${p?.apellidoPaterno ?? ""}`.trim();
     setTituloSiguientePaso("¿Asignar otro participante?");
     setSubtituloSiguientePaso(nombreCompleto);
-
-    sileo.success({
-      title: "Participante asignado",
-      description: nombreCompleto,
-    });
+    sileo.success({ title: "Participante asignado", description: nombreCompleto });
 
     setOpcionesSiguientePaso([
       {
@@ -142,26 +196,26 @@ export default function Cursos() {
         descripcion: "Volver a la lista de cursos",
         icono: <CheckCircle className="w-5 h-5 text-white" />,
         color: "from-slate-400 to-slate-500",
-        onClick: () => { setCursoActivoId(null); setCursoRecienCreado(null); },
+        onClick: () => { setCursoActivoId(null); setCursoRecienCreado(null); setEmpresaIdParticipante(null); },
       },
     ]);
     setSiguientePasoModalAbierto(true);
   };
 
+  // ─────────────────────────────────────────────────────────
+  // Editar, eliminar, toggle
+  // ─────────────────────────────────────────────────────────
   const handleEditarCurso = async (data: any) => {
     try {
       setModalLoading(true);
       await actualizarCurso(cursoAEditar.id, data);
-      setModalCursoAbierto(false);
+      setModalCursoAbiertoOpen(false);
       setCursoAEditar(null);
       cargarCursos();
       sileo.success({ title: "Curso actualizado correctamente" });
     } catch (error) {
       console.error("Error al actualizar curso:", error);
-      sileo.error({
-        title: "Error al actualizar el curso",
-        description: "Inténtalo de nuevo más tarde",
-      });
+      sileo.error({ title: "Error al actualizar el curso" });
     } finally {
       setModalLoading(false);
     }
@@ -178,17 +232,11 @@ export default function Cursos() {
       setEliminarDialogAbierto(false);
       setLoading(true);
       await eliminarCurso(cursoAEliminar.id);
-      sileo.success({
-        title: "Curso eliminado satisfactoriamente",
-        description: `"${cursoAEliminar.nombre}" ha sido eliminado`,
-      });
+      sileo.success({ title: "Curso eliminado", description: `"${cursoAEliminar.nombre}"` });
       cargarCursos();
     } catch (error) {
-      console.error("Error al eliminar curso:", error);
-      sileo.error({
-        title: "Error al eliminar el curso",
-        description: "No se pudo completar la operación",
-      });
+      console.error(error);
+      sileo.error({ title: "Error al eliminar el curso" });
     } finally {
       setLoading(false);
       setCursoAEliminar(null);
@@ -206,7 +254,7 @@ export default function Cursos() {
       }
       cargarCursos();
     } catch (error) {
-      console.error("Error al cambiar estado:", error);
+      console.error(error);
       sileo.error({ title: "Error al cambiar el estado del curso" });
     }
   };
@@ -214,6 +262,7 @@ export default function Cursos() {
   const sinInstructor = (curso: any) =>
     !curso.instructor || curso.instructor.nombre === INSTRUCTOR_PLACEHOLDER;
 
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 dark:from-background dark:to-black flex">
       <Sidebar />
@@ -243,7 +292,7 @@ export default function Cursos() {
               color="danger"
               variant="shadow"
               startContent={<Plus className="w-4 h-4" />}
-              onPress={() => { setCursoAEditar(null); setModalCursoAbierto(true); }}
+              onPress={() => setTipoCursoModalAbierto(true)}
               className="font-medium"
             >
               Nuevo Curso
@@ -254,22 +303,19 @@ export default function Cursos() {
         {/* BUSCADOR */}
         <Card className="bg-content1/50 backdrop-blur-sm">
           <CardBody className="py-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Input
-                placeholder="Buscar por nombre de curso..."
-                value={search}
-                onChange={e => { setPage(1); setSearch(e.target.value); }}
-                isClearable
-                onClear={() => { setPage(1); setSearch(""); }}
-                startContent={<Search className="w-4 h-4 text-default-400" />}
-                endContent={search && (
-                  <Button isIconOnly size="sm" variant="light" onPress={() => { setPage(1); setSearch(""); }}>
-                    <X className="w-4 h-4 text-default-400" />
-                  </Button>
-                )}
-                className="flex-1"
-              />
-            </div>
+            <Input
+              placeholder="Buscar por nombre de curso..."
+              value={search}
+              onChange={e => { setPage(1); setSearch(e.target.value); }}
+              isClearable
+              onClear={() => { setPage(1); setSearch(""); }}
+              startContent={<Search className="w-4 h-4 text-default-400" />}
+              endContent={search && (
+                <Button isIconOnly size="sm" variant="light" onPress={() => { setPage(1); setSearch(""); }}>
+                  <X className="w-4 h-4 text-default-400" />
+                </Button>
+              )}
+            />
           </CardBody>
         </Card>
 
@@ -283,12 +329,8 @@ export default function Cursos() {
                 !loading && totalPages > 1 ? (
                   <div className="flex w-full justify-center py-4">
                     <Pagination
-                      page={page}
-                      total={totalPages}
-                      onChange={p => setPage(p)}
-                      showControls
-                      color="danger"
-                      size="md"
+                      page={page} total={totalPages} onChange={p => setPage(p)}
+                      showControls color="danger" size="md"
                     />
                   </div>
                 ) : null
@@ -296,30 +338,25 @@ export default function Cursos() {
             >
               <TableHeader>
                 <TableColumn className="font-semibold text-default-600">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4" /> Nombre
-                  </div>
+                  <div className="flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Nombre</div>
+                </TableColumn>
+                <TableColumn className="font-semibold text-default-600">Tipo</TableColumn>
+                <TableColumn className="font-semibold text-default-600">
+                  <div className="flex items-center gap-2"><User className="w-4 h-4" /> Instructor</div>
                 </TableColumn>
                 <TableColumn className="font-semibold text-default-600">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" /> Instructor
-                  </div>
-                </TableColumn>
-                <TableColumn className="font-semibold text-default-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> Fecha Inicio
-                  </div>
+                  <div className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Fecha Inicio</div>
                 </TableColumn>
                 <TableColumn className="font-semibold text-default-600">Estado</TableColumn>
                 <TableColumn align="center" className="font-semibold text-default-600">Acciones</TableColumn>
               </TableHeader>
 
-              {/* SKELETON */}
               {loading ? (
                 <TableBody items={Array.from({ length: SKELETON_COUNT }, (_, i) => ({ id: i }))}>
                   {(item) => (
-                    <TableRow key={`sk-${item.id}`} className="hover:bg-default-50/50">
+                    <TableRow key={`sk-${item.id}`}>
                       <TableCell><Skeleton className="h-4 w-48 rounded-lg" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-28 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24 rounded-lg" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
@@ -327,8 +364,6 @@ export default function Cursos() {
                     </TableRow>
                   )}
                 </TableBody>
-
-              /* VACÍO */
               ) : cursos.length === 0 ? (
                 <TableBody
                   emptyContent={
@@ -336,14 +371,9 @@ export default function Cursos() {
                       <GraduationCap className="w-12 h-12 mx-auto text-default-300 mb-3" />
                       <p className="text-default-500">No hay cursos registrados</p>
                       {canCreate && (
-                        <Button
-                          color="danger"
-                          variant="flat"
-                          size="sm"
-                          className="mt-3"
+                        <Button color="danger" variant="flat" size="sm" className="mt-3"
                           startContent={<Plus className="w-4 h-4" />}
-                          onPress={() => { setCursoAEditar(null); setModalCursoAbierto(true); }}
-                        >
+                          onPress={() => setTipoCursoModalAbierto(true)}>
                           Crear primer curso
                         </Button>
                       )}
@@ -352,44 +382,46 @@ export default function Cursos() {
                 >
                   {[]}
                 </TableBody>
-
-              /* DATOS */
               ) : (
                 <TableBody items={cursos}>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {(curso: any) => (
-                    <TableRow
-                      key={curso.id}
-                      className="hover:bg-default-50/50 transition-colors cursor-pointer group"
-                    >
+                    <TableRow key={curso.id}
+                      className="hover:bg-default-50/50 transition-colors cursor-pointer group">
+
                       <TableCell
                         className="font-medium text-foreground group-hover:text-danger transition-colors"
                         onClick={() => { setCursoSeleccionado(curso); setDetalleAbierto(true); }}
                       >
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            color={curso.activo ? "success" : "default"}
-                            variant="flat"
-                            size="sm"
-                            className="hidden group-hover:flex"
-                          />
-                          {curso.nombre}
-                        </div>
+                        {curso.nombre}
+                      </TableCell>
+
+                      {/* Tipo de curso */}
+                      <TableCell>
+                        <Chip
+                          size="sm"
+                          variant="flat"
+                          color={curso.tipoCurso === "CERRADO" ? "warning" : "primary"}
+                          startContent={
+                            curso.tipoCurso === "CERRADO"
+                              ? <Building2 className="w-3 h-3" />
+                              : <Globe className="w-3 h-3" />
+                          }
+                        >
+                          {curso.tipoCurso === "CERRADO" ? "Cerrado" : "Abierto"}
+                        </Chip>
+                        {curso.tipoCurso === "CERRADO" && curso.empresa && (
+                          <p className="text-xs text-default-400 mt-0.5 pl-1 truncate max-w-[120px]">
+                            {curso.empresa.nombre}
+                          </p>
+                        )}
                       </TableCell>
 
                       <TableCell>
                         {sinInstructor(curso) ? (
-                          <Tooltip
-                            content="Este curso aún no tiene instructor asignado"
-                            color="warning"
-                            className="text-xs"
-                          >
-                            <Chip
-                              color="warning"
-                              variant="flat"
-                              size="sm"
-                              startContent={<AlertTriangle className="w-3 h-3" />}
-                              className="cursor-default font-medium"
-                            >
+                          <Tooltip content="Sin instructor asignado" color="warning">
+                            <Chip color="warning" variant="flat" size="sm"
+                              startContent={<AlertTriangle className="w-3 h-3" />}>
                               Sin asignar
                             </Chip>
                           </Tooltip>
@@ -408,8 +440,8 @@ export default function Cursos() {
                       <TableCell>
                         <div className="flex items-center gap-2 text-default-600">
                           <Calendar className="w-4 h-4 text-default-400" />
-                          {new Date(curso.fechaInicio).toLocaleDateString('es-ES', {
-                            day: 'numeric', month: 'short', year: 'numeric'
+                          {new Date(curso.fechaInicio).toLocaleDateString("es-ES", {
+                            day: "numeric", month: "short", year: "numeric",
                           })}
                         </div>
                       </TableCell>
@@ -417,13 +449,8 @@ export default function Cursos() {
                       <TableCell>
                         <Chip
                           color={curso.activo ? "success" : "default"}
-                          variant="flat"
-                          size="sm"
-                          startContent={curso.activo
-                            ? <ToggleRight className="w-4 h-4" />
-                            : <ToggleLeft className="w-4 h-4" />
-                          }
-                          className="font-medium"
+                          variant="flat" size="sm"
+                          startContent={curso.activo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                         >
                           {curso.activo ? "Activo" : "Inactivo"}
                         </Chip>
@@ -438,14 +465,12 @@ export default function Cursos() {
                                 <EllipsisVertical className="w-5 h-5 text-default-500" />
                               </Button>
                             </DropdownTrigger>
-                            <DropdownMenu
-                              aria-label="Acciones del curso"
-                              variant="flat"
+                            <DropdownMenu aria-label="Acciones" variant="flat"
                               onAction={(key) => {
                                 switch (key) {
                                   case "editar":
                                     setCursoAEditar(curso);
-                                    setModalCursoAbierto(true);
+                                    setModalCursoAbiertoOpen(true);
                                     break;
                                   case "detalle":
                                     setCursoSeleccionado(curso);
@@ -458,42 +483,40 @@ export default function Cursos() {
                                     handleConfirmarEliminar(curso);
                                     break;
                                 }
-                              }}
-                            >
-                              {canUpdate && (
-                                <DropdownItem key="editar">
+                              }}>
+                              <>
+                                {canUpdate ? (
+                                  <DropdownItem key="editar">
+                                    <div className="flex items-center gap-2">
+                                      <Pencil className="w-4 h-4 text-default-500" /> Editar
+                                    </div>
+                                  </DropdownItem>
+                                ) : null}
+                                <DropdownItem key="detalle">
                                   <div className="flex items-center gap-2">
-                                    <Pencil className="w-4 h-4 text-default-500" />
-                                    <span>Editar</span>
+                                    <Eye className="w-4 h-4 text-default-500" /> Ver detalle
                                   </div>
                                 </DropdownItem>
-                              )}
-                              <DropdownItem key="detalle">
-                                <div className="flex items-center gap-2">
-                                  <Eye className="w-4 h-4 text-default-500" />
-                                  <span>Ver detalle</span>
-                                </div>
-                              </DropdownItem>
-                              {canUpdate && (
-                                <DropdownItem key="toggle"
-                                  className={curso.activo ? "text-warning" : "text-success"}>
-                                  <div className="flex items-center gap-2">
-                                    {curso.activo
-                                      ? <ToggleLeft className="w-4 h-4 text-warning" />
-                                      : <ToggleRight className="w-4 h-4 text-success" />
-                                    }
-                                    <span>{curso.activo ? "Desactivar" : "Activar"}</span>
-                                  </div>
-                                </DropdownItem>
-                              )}
-                              {canDelete && (
-                                <DropdownItem key="delete" className="text-danger">
-                                  <div className="flex items-center gap-2">
-                                    <Trash2 className="w-4 h-4" />
-                                    <span>Eliminar</span>
-                                  </div>
-                                </DropdownItem>
-                              )}
+                                {canUpdate ? (
+                                  <DropdownItem key="toggle"
+                                    className={curso.activo ? "text-warning" : "text-success"}>
+                                    <div className="flex items-center gap-2">
+                                      {curso.activo
+                                        ? <ToggleLeft className="w-4 h-4 text-warning" />
+                                        : <ToggleRight className="w-4 h-4 text-success" />
+                                      }
+                                      {curso.activo ? "Desactivar" : "Activar"}
+                                    </div>
+                                  </DropdownItem>
+                                ) : null}
+                                {canDelete ? (
+                                  <DropdownItem key="delete" className="text-danger">
+                                    <div className="flex items-center gap-2">
+                                      <Trash2 className="w-4 h-4" /> Eliminar
+                                    </div>
+                                  </DropdownItem>
+                                ) : null}
+                              </>
                             </DropdownMenu>
                           </Dropdown>
                         </div>
@@ -507,7 +530,7 @@ export default function Cursos() {
         </Card>
       </main>
 
-      {/* MODAL DE CONFIRMACIÓN */}
+      {/* ── Confirmación eliminar ── */}
       <Modal
         isOpen={eliminarDialogAbierto}
         onClose={() => { setEliminarDialogAbierto(false); setCursoAEliminar(null); }}
@@ -517,22 +540,17 @@ export default function Cursos() {
           {(onClose) => (
             <>
               <ModalHeader className="flex items-center gap-2 text-danger">
-                <Trash2 className="w-5 h-5" />
-                Eliminar curso
+                <Trash2 className="w-5 h-5" /> Eliminar curso
               </ModalHeader>
               <ModalBody>
                 <p className="text-default-600 text-sm">
-                  ¿Estás seguro de que deseas eliminar el curso{" "}
-                  <span className="font-semibold text-foreground">
-                    "{cursoAEliminar?.nombre}"
-                  </span>
-                  ? Esta acción no se puede deshacer.
+                  ¿Eliminar el curso{" "}
+                  <span className="font-semibold">"{cursoAEliminar?.nombre}"</span>?
+                  Esta acción no se puede deshacer.
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="flat" onPress={onClose} isDisabled={loading}>
-                  Cancelar
-                </Button>
+                <Button variant="flat" onPress={onClose} isDisabled={loading}>Cancelar</Button>
                 <Button color="danger" onPress={handleEliminarConfirmado} isLoading={loading}
                   startContent={!loading && <Trash2 className="w-4 h-4" />}>
                   Eliminar
@@ -543,31 +561,53 @@ export default function Cursos() {
         </ModalContent>
       </Modal>
 
-      {/* MODALES */}
+      {/* ── Selector de tipo ── */}
+      <TipoCursoModal
+        isOpen={tipoCursoModalAbierto}
+        onClose={() => setTipoCursoModalAbierto(false)}
+        onSelect={handleSelectTipo}
+      />
+
+      {/* ── Modal curso abierto ── */}
       <CursoModal
-        isOpen={modalCursoAbierto}
-        onClose={() => { setModalCursoAbierto(false); setCursoAEditar(null); }}
-        onSubmit={cursoAEditar ? handleEditarCurso : handleCrearCurso}
+        isOpen={modalCursoAbiertoOpen}
+        onClose={() => { setModalCursoAbiertoOpen(false); setCursoAEditar(null); }}
+        onSubmit={cursoAEditar ? handleEditarCurso : handleCrearCursoAbierto}
         cursoToEdit={cursoAEditar}
         isLoading={modalLoading}
       />
+
+      {/* ── Modal curso cerrado ── */}
+      <CursoCerradoModal
+        isOpen={modalCursoCerradoOpen}
+        onClose={() => setModalCursoCerradoOpen(false)}
+        onCursoCreado={handleCrearCursoCerrado}
+        isLoading={modalLoading}
+      />
+
+      {/* ── Detalle ── */}
       <CursoDetalleModal
         isOpen={detalleAbierto}
         onClose={() => setDetalleAbierto(false)}
         curso={cursoSeleccionado}
       />
+
+      
       <ParticipanteModal
         isOpen={modalParticipanteAbierto}
         onClose={() => setModalParticipanteAbierto(false)}
         onSuccess={handleParticipanteCreado}
         cursoIdParaAsignar={cursoActivoId}
+        empresaIdPreasignada={empresaIdParticipante}
       />
+
+      {/* ── Siguiente paso ── */}
       <SiguientePasoModal
         isOpen={siguientePasoModalAbierto}
         onClose={() => {
           setSiguientePasoModalAbierto(false);
           setCursoActivoId(null);
-          setCursoRecienCreado(null);
+          setEmpresaIdParticipante(null);
         }}
         titulo={tituloSiguientePaso}
         subtitulo={subtituloSiguientePaso}
