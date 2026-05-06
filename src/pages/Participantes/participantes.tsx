@@ -336,6 +336,7 @@ export default function Participantes() {
   const [siguienteOpen, setSiguienteOpen] = useState(false);
   const [nombreCreado, setNombreCreado] = useState("");
   const [aEditar, setAEditar] = useState<any | null>(null);
+  const [empresaIdParaEditar, setEmpresaIdParaEditar] = useState<number | null>(null);
 
   const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [participanteDetalle, setParticipanteDetalle] = useState<any | null>(null);
@@ -783,7 +784,18 @@ export default function Participantes() {
                               {canUpdate ? (
                                 <DropdownItem
                                   key="editar"
-                                  onPress={() => { setAEditar(p); setModalOpen(true); }}
+                                  onPress={() => {
+                                    setAEditar(p);
+                                    const inscCerrada = p.inscripciones?.find(
+                                      (i: any) => i.curso?.tipoCurso === "CERRADO"
+                                    );
+                                    setEmpresaIdParaEditar(
+                                      inscCerrada
+                                        ? (p.empresaId ?? inscCerrada.curso?.empresaId ?? null)
+                                        : null
+                                    );
+                                    setModalOpen(true);
+                                  }}
                                 >
                                   Editar participante
                                 </DropdownItem>
@@ -875,9 +887,10 @@ export default function Participantes() {
       </Modal>
       <ParticipanteModal
         isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setAEditar(null); }}
+        onClose={() => { setModalOpen(false); setAEditar(null); setEmpresaIdParaEditar(null); }}
         onSuccess={aEditar ? handleEditado : handleCreado}
         participanteToEdit={aEditar}
+        empresaIdPreasignada={empresaIdParaEditar}
       />
       <SiguientePasoModal
         isOpen={siguienteOpen}

@@ -37,6 +37,7 @@ import {
   crearParticipante,
   actualizarParticipante,
 } from "../../../services/participanteService";
+import { actualizarInscripcion } from "../../../services/inscripcionService";
 import {
   MagnifyingGlassIcon,
   ClockIcon,
@@ -452,6 +453,9 @@ export default function ParticipanteModal({
   const [cursoSearch, setCursoSearch] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cursoSeleccionado, setCursoSeleccionado] = useState<any | null>(null);
+  const [cursoFijo, setCursoFijo] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [inscripcionActual, setInscripcionActual] = useState<any | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeouts = useRef<Record<string, any>>({});
@@ -477,6 +481,8 @@ export default function ParticipanteModal({
       setCursos([]);
       setCursoSearch("");
       setCursoSeleccionado(null);
+      setCursoFijo(false);
+      setInscripcionActual(null);
       setInscripcionModalOpen(false);
       setInscripcionData(null);
       setEmpresaModalOpen(false);
@@ -511,13 +517,18 @@ export default function ParticipanteModal({
           })
           .catch(console.error);
       }
-      if (participanteToEdit.cursoId) {
+      // Cargar curso desde la primera inscripción del participante
+      const primeraInsc = participanteToEdit.inscripciones?.[0];
+      if (primeraInsc?.cursoId) {
+        setInscripcionActual(primeraInsc);
         setCursoMode("buscar");
-        obtenerCursoPorId(participanteToEdit.cursoId)
+        obtenerCursoPorId(primeraInsc.cursoId)
           .then((curso) => {
             setCursoSeleccionado(curso);
             setCursoSearch(curso.nombre);
             setCursos([curso]);
+            setForm((prev) => ({ ...prev, cursoId: curso.id }));
+            if (curso.tipoCurso === "CERRADO") setCursoFijo(true);
           })
           .catch(console.error);
       }
@@ -707,19 +718,22 @@ export default function ParticipanteModal({
       }
     }
 
-    if (!cursoMode) {
-      sileo.warning({
-        title: "Sección Curso incompleta",
-        description: "Debes seleccionar una opción: Buscar curso o Inscribir después.",
-      });
-      return;
-    }
-    if (cursoMode === "buscar" && !cursoSeleccionado) {
-      sileo.warning({
-        title: "Curso no seleccionado",
-        description: "Buscaste un curso pero no seleccionaste ninguno.",
-      });
-      return;
+    // En modo edición el curso ya existe; solo validar cuando se está creando
+    if (!participanteToEdit) {
+      if (!cursoMode) {
+        sileo.warning({
+          title: "Sección Curso incompleta",
+          description: "Debes seleccionar una opción: Buscar curso o Inscribir después.",
+        });
+        return;
+      }
+      if (cursoMode === "buscar" && !cursoSeleccionado) {
+        sileo.warning({
+          title: "Curso no seleccionado",
+          description: "Buscaste un curso pero no seleccionaste ninguno.",
+        });
+        return;
+      }
     }
 
     setSubmitError(null);
@@ -727,6 +741,26 @@ export default function ParticipanteModal({
     try {
       if (participanteToEdit) {
         const response = await actualizarParticipante(participanteToEdit.id, buildPayload());
+
+        // Curso cerrado: corregir estado a PAGADO si aún está pendiente
+        if (cursoFijo && inscripcionActual?.estadoPago === "PENDIENTE") {
+          await actualizarInscripcion(inscripcionActual.id, {
+            estadoPago: "PAGADO",
+            fechaPago: new Date().toISOString(),
+            montoPagado: inscripcionActual.montoFinal ?? inscripcionActual.montoEsperado ?? 0,
+          });
+        }
+
+        // Curso abierto: actualizar la inscripción si el usuario cambió el curso
+        if (
+          !cursoFijo &&
+          inscripcionActual &&
+          cursoSeleccionado &&
+          cursoSeleccionado.id !== inscripcionActual.cursoId
+        ) {
+          await actualizarInscripcion(inscripcionActual.id, { cursoId: cursoSeleccionado.id });
+        }
+
         sileo.success({ title: "¡Actualizado!", description: "El participante fue actualizado correctamente." });
         onSuccess?.(response);
         onClose();
@@ -1295,30 +1329,63 @@ export default function ParticipanteModal({
             <div className="flex items-center gap-2">
               <Ic.Book />
               <h3 className="text-sm font-semibold text-slate-700 dark:text-gray-200">Curso</h3>
-              <Chip size="sm" variant="flat" color="default" className="ml-2">
-                Opcional
-              </Chip>
+              {cursoFijo ? (
+                <Chip size="sm" variant="flat" color="primary" className="ml-2"
+                  startContent={<LockClosedIcon className="w-3 h-3" />}>
+                  Fijo
+                </Chip>
+              ) : (
+                <Chip size="sm" variant="flat" color="default" className="ml-2">
+                  {participanteToEdit ? "Editable" : "Opcional"}
+                </Chip>
+              )}
             </div>
             <Divider className="bg-gray-200 dark:bg-gray-600" />
 
-            <div className="grid grid-cols-2 gap-3">
-              <ModeCard
-                active={cursoMode === "buscar"}
-                color="danger"
-                icon={<MagnifyingGlassIcon className="w-6 h-6" />}
-                label="Buscar curso"
-                description="Selecciona de la base"
-                onPress={() => handleCursoMode("buscar")}
-              />
-              <ModeCard
-                active={cursoMode === "despues"}
-                color="warning"
-                icon={<ClockIcon className="w-6 h-6" />}
-                label="Inscribir después"
-                description="Pendiente"
-                onPress={() => handleCursoMode("despues")}
-              />
-            </div>
+            {/* Curso bloqueado (edición de participante en curso CERRADO) */}
+            {cursoFijo && cursoSeleccionado ? (
+              <div className="flex items-center gap-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 p-4">
+                <div className="p-2 bg-primary-100 dark:bg-primary-900/40 rounded-full">
+                  <LockClosedIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                    {cursoSeleccionado.nombre}
+                  </p>
+                  {cursoSeleccionado.instructor && (
+                    <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">
+                      {cursoSeleccionado.instructor?.nombre}{" "}
+                      {cursoSeleccionado.instructor?.apellidoPaterno}
+                    </p>
+                  )}
+                  <p className="text-xs text-primary-500 dark:text-primary-500 mt-1">
+                    Curso cerrado — no se puede cambiar
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Tarjetas de modo solo si no estamos editando con curso ya cargado */}
+                {(!participanteToEdit || !cursoSeleccionado) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <ModeCard
+                      active={cursoMode === "buscar"}
+                      color="danger"
+                      icon={<MagnifyingGlassIcon className="w-6 h-6" />}
+                      label="Buscar curso"
+                      description="Selecciona de la base"
+                      onPress={() => handleCursoMode("buscar")}
+                    />
+                    <ModeCard
+                      active={cursoMode === "despues"}
+                      color="warning"
+                      icon={<ClockIcon className="w-6 h-6" />}
+                      label="Inscribir después"
+                      description="Pendiente"
+                      onPress={() => handleCursoMode("despues")}
+                    />
+                  </div>
+                )}
 
             {cursoMode === "buscar" && (
               <div className="mt-3">
@@ -1426,13 +1493,15 @@ export default function ParticipanteModal({
               </div>
             )}
 
-            {!cursoMode && (
+            {!cursoMode && !participanteToEdit && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
                 <ExclamationTriangleIcon className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
                 <p className="text-sm text-rose-600 dark:text-rose-400 font-medium">
                   Debes seleccionar una opción para continuar
                 </p>
               </div>
+            )}
+              </>
             )}
           </div>
 
