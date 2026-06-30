@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 
-type OrigenEmpresa = "fecap" | "participante";
+type OrigenEmpresa = "fecap" | "participante" | "curso";
 
 interface EmpresaModalContextType {
   origen: OrigenEmpresa;
@@ -12,10 +12,24 @@ const EmpresaModalContext = createContext<EmpresaModalContextType>({
   setOrigen: () => {},
 });
 
-export function EmpresaModalProvider({ children }: { children: React.ReactNode }) {
-  const [origen, setOrigen] = useState<OrigenEmpresa>("participante");
+interface EmpresaModalProviderProps {
+  children: React.ReactNode;
+  origen?: OrigenEmpresa;
+}
+
+export function EmpresaModalProvider({
+  children,
+  origen = "participante",
+}: EmpresaModalProviderProps) {
+  const [origenState, setOrigen] = useState<OrigenEmpresa>(origen);
+
   return (
-    <EmpresaModalContext.Provider value={{ origen, setOrigen }}>
+    <EmpresaModalContext.Provider
+      value={{
+        origen: origenState,
+        setOrigen,
+      }}
+    >
       {children}
     </EmpresaModalContext.Provider>
   );

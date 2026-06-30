@@ -90,6 +90,7 @@ export default function Cursos() {
       setCursoAEditar(null);
       setModalCursoAbiertoOpen(true);
     } else {
+      setCursoAEditar(null);
       setModalCursoCerradoOpen(true);
     }
   };
@@ -153,19 +154,27 @@ export default function Cursos() {
   // Crear curso abierto
   // ─────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCrearCursoAbierto = async (data: any) => {
-    try {
-      setModalLoading(true);
-      const cursoCreado = await crearCurso({ ...data, tipoCurso: "ABIERTO" });
-      setModalCursoAbiertoOpen(false);
-      postCreacion(cursoCreado);
-    } catch (error) {
-      console.error("Error al crear curso:", error);
-      sileo.error({ title: "Error al crear el curso" });
-    } finally {
-      setModalLoading(false);
-    }
-  };
+const handleCrearCursoAbierto = async (data: any) => {
+  try {
+    setModalLoading(true);
+    const cursoCreado = await crearCurso({ ...data, tipoCurso: "ABIERTO" });
+    setModalCursoAbiertoOpen(false);
+    postCreacion(cursoCreado);
+  } catch (error: any) {
+    const msg =
+      error?.response?.data?.message ??
+      error?.response?.data?.error ??
+      error?.message ??
+      "Error desconocido";
+    console.error("Error al crear curso:", error);
+    sileo.error({
+      title: "Error al crear el curso",
+      description: typeof msg === "string" ? msg : JSON.stringify(msg),
+    });
+  } finally {
+    setModalLoading(false);
+  }
+};
 
   // ─────────────────────────────────────────────────────────
   // Crear curso cerrado (ya lleva tipoCurso y empresaId)
@@ -236,7 +245,7 @@ export default function Cursos() {
         descripcion: "Volver a la lista de cursos",
         icono: <CheckCircle className="w-5 h-5 text-white" />,
         color: "from-slate-400 to-slate-500",
-        onClick: () => { setCursoActivoId(null); setCursoRecienCreado(null); setEmpresaIdParticipante(null); },
+        onClick: () => { setCursoActivoId(null); setEmpresaIdParticipante(null); },
       },
     ]);
     setSiguientePasoModalAbierto(true);

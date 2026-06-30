@@ -19,6 +19,7 @@ interface ModalFormProps {
   hideFooter?: boolean;
   hideCancelButton?: boolean;
   submitText?: string;
+  // ✅ void puro — nunca Promise, HeroUI no acepta async en onPress
   onSubmit?: () => void;
   customFooter?: React.ReactNode;
   hideCloseButton?: boolean;
@@ -56,7 +57,8 @@ export default function ModalForm({
         base: `bg-gray-50 dark:bg-gray-800 ${className}`,
         header: "border-b border-gray-200 dark:border-gray-600",
         body: "bg-gray-50 dark:bg-gray-800",
-        footer: "border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800",
+        footer:
+          "border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800",
       }}
     >
       <ModalContent>
@@ -99,16 +101,35 @@ export default function ModalForm({
                         Cancelar
                       </Button>
                     )}
-                    <Button
-                      type={onSubmit ? "button" : "submit"}
-                      form={onSubmit ? undefined : formId}
-                      onPress={onSubmit}
-                      color="danger"
-                      isLoading={isLoading}
-                      className="font-medium px-6"
-                    >
-                      {submitText}
-                    </Button>
+
+                    {/*
+                     * ✅ FIX DEFINITIVO:
+                     * onPress espera (e: PressEvent) => void — nunca Promise.
+                     * Envolver con () => { void onSubmit(); } garantiza que
+                     * HeroUI recibe exactamente () => void sin importar si
+                     * onSubmit es sync o async internamente.
+                     */}
+                    {onSubmit ? (
+                      <Button
+                        type="button"
+                        onPress={() => { void onSubmit(); }}
+                        color="danger"
+                        isLoading={isLoading}
+                        className="font-medium px-6"
+                      >
+                        {submitText}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        form={formId}
+                        color="danger"
+                        isLoading={isLoading}
+                        className="font-medium px-6"
+                      >
+                        {submitText}
+                      </Button>
+                    )}
                   </>
                 )}
               </ModalFooter>

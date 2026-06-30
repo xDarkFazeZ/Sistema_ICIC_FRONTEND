@@ -28,7 +28,6 @@ export interface CursoEstado {
     apellidoPaterno: string;
   };
   inscritos: number;
-  // ← Agregar esto
   participantes?: Array<{
     id: number;
     nombre: string;
@@ -63,15 +62,15 @@ export interface DashboardData {
   participantesSinPago: any[];
   saldoFecapPorMes: any[];
   horasHombrePorMes: any[];
-  ingresosPorMesEfectivoTransferencia: IngresoPorMes[]; // ← NUEVO
+  ingresosPorMesEfectivoTransferencia: IngresoPorMes[];
+  ingresosCursosCerradosPorMes: IngresoPorMes[];
 }
+
 export const dashboardService = {
   async getDashboardData(): Promise<DashboardData> {
     try {
-      // Usamos apiClient que ya tiene el token en el interceptor
       const response = await apiClient.get("/dashboard");
 
-      // La estructura de respuesta del backend
       if (response.data.success) {
         return response.data.data;
       } else {

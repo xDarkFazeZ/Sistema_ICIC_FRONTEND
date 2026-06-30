@@ -1,296 +1,250 @@
+/**
+ * CursoModal.tsx
+ *
+ * Modal unificado para crear y editar cursos (ABIERTO y CERRADO).
+ * Usa Breadcrumbs de HeroUI como navegador de pasos.
+ * Cero lógica de negocio — todo vive en useCursoWizard.
+ */
+
+import { useState } from "react";
+import { AcademicCapIcon } from "@heroicons/react/24/outline";
 import {
-  Input,
-  Textarea,
-  Autocomplete,
-  AutocompleteItem,
-  Switch,
-  Select,
-  SelectItem,
+  Breadcrumbs,
+  BreadcrumbItem,
+  Chip,
   Card,
   CardBody,
-  Divider,
-  Chip,
-  Button,
-  DateRangePicker,
 } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
-import { useEffect, useState } from "react";
-import { useDebounce } from "use-debounce";
-import { sileo } from "sileo";
-import {
-  buscarInstructores,
-  obtenerInstructorPorId,
-} from "../../../services/instructorService";
+import { Globe, Building2 } from "lucide-react";
+
 import ModalForm from "../../common/modalForm";
 import InstructorModal from "../Instructor/instructorModal";
+import EmpresaModal from "../Empresa/empresaModal";
+import { EmpresaModalProvider } from "../Empresa/EmpresaModalContext";
+
+// Este está en: src/components/modals/common/SiguientePasoModal.tsx
+import SiguientePasoModal from "../../common/siguientePasoModal";
+
+// Ajusta esta ruta si tu archivo está en otra carpeta
+import ParticipanteModal from "../Participante/participanteModal";
+
+import Paso1DatosCurso from "../../reutilizable/pasos/Paso1DatosCurso";
+import Paso2Empresa from "../../reutilizable/pasos/Paso2Empresa";
+import Paso3Confirmacion from "../../reutilizable/pasos/Paso3Confirmacion";
+import Paso4Participantes from "../../reutilizable/pasos/Paso4Participantes";
+import PasoPreciosCerrado from "../../reutilizable/pasos/PasoPreciosCerrado";
+import PasoPreciosAbierto from "../../reutilizable/pasos/PasoPreciosAbierto";
+
 import {
-  UserPlusIcon,
-  MagnifyingGlassIcon,
-  ClockIcon,
-  AcademicCapIcon,
-  CurrencyDollarIcon,
-  CalendarIcon,
-  MapPinIcon,
-  DocumentTextIcon,
-  ChevronDownIcon,
-} from "@heroicons/react/24/outline";
-import {
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  InformationCircleIcon,
-} from "@heroicons/react/24/solid";
+  useCursoWizard,
+  type TipoCurso,
+  type PasoId,
+  type CursoPayload,
+} from "../../../hooks/useCursoWizard";
+
+import type {
+  CursoCerradoDetalle,
+} from "../../../types/cursoCerrado.types";
+
+// ─── Tipos locales ────────────────────────────────────────────────────────────
+
+type ParticipanteCreado = {
+  id?: number;
+  nombre?: string;
+  apellidoPaterno?: string;
+  apellidoMaterno?: string | null;
+};
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface CursoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<void>;
-  cursoToEdit?: any;
-  isLoading?: boolean;
+  onCursoCreado?: (payload: CursoPayload) => Promise<CursoCerradoDetalle>;
+  cursoToEdit?: CursoCerradoDetalle;
 }
 
-const NIVELES_GERENCIALES = [
-  { key: "Operativo", label: "Operativo", description: "Supervisores y coordinadores" },
-  { key: "Medio", label: "Medio", description: "Jefes de área y gerentes" },
-  { key: "Directivo", label: "Directivo", description: "Directores y alta dirección" },
-];
+// ─── Paso 0: selección de tipo ────────────────────────────────────────────────
 
-type InstructorMode = "buscar" | "crear" | "despues";
+function PasoTipo({ onSelect }: { onSelect: (tipo: TipoCurso) => void }) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-default-500">
+        Elige el tipo de curso antes de continuar.
+      </p>
 
-const FORM_INITIAL: Record<string, any> = {
-  nombre: "",
-  descripcion: "",
-  precioAfiliado: "",
-  precioPublico: "",
-  precioEstudiante: "",
-  duracion: "",
-  horario: "",
-  fechaInicio: "",
-  fechaFin: "",
-  aula: "",
-  nivelGerencial: "",
-  activo: true,
-  instructorId: null as number | null,
-};
+      <div className="grid grid-cols-2 gap-4">
+        {/* ABIERTO */}
+        <Card
+          isPressable
+          onPress={() => onSelect("ABIERTO")}
+          className="border-2 border-default-200 hover:border-danger hover:shadow-lg hover:shadow-danger/20 transition-all duration-200 hover:scale-[1.03] group"
+        >
+          <CardBody className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="p-3 rounded-full bg-primary-50 group-hover:bg-danger-50 transition-colors">
+              <Globe className="w-7 h-7 text-primary-500 group-hover:text-danger transition-colors" />
+            </div>
+
+            <div>
+              <p className="font-bold text-default-800 text-base">
+                Abierto
+              </p>
+              <p className="text-xs text-default-400 mt-1 leading-snug">
+                Inscripciones individuales, sin empresa asignada
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1 mt-1 text-left w-full">
+              {[
+                "Múltiples empresas o público",
+                "Precio por participante",
+                "Inscripciones independientes",
+              ].map((t) => (
+                <p
+                  key={t}
+                  className="text-xs text-default-500 flex items-center gap-1"
+                >
+                  <span className="text-success">✓</span> {t}
+                </p>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* CERRADO */}
+        <Card
+          isPressable
+          onPress={() => onSelect("CERRADO")}
+          className="border-2 border-default-200 hover:border-danger hover:shadow-lg hover:shadow-danger/20 transition-all duration-200 hover:scale-[1.03] group"
+        >
+          <CardBody className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="p-3 rounded-full bg-warning-50 group-hover:bg-danger-50 transition-colors">
+              <Building2 className="w-7 h-7 text-warning-500 group-hover:text-danger transition-colors" />
+            </div>
+
+            <div>
+              <p className="font-bold text-default-800 text-base">
+                Cerrado
+              </p>
+              <p className="text-xs text-default-400 mt-1 leading-snug">
+                Exclusivo para una empresa, con costo grupal
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1 mt-1 text-left w-full">
+              {[
+                "Una empresa asignada",
+                "Costo × participantes",
+                "Participantes de la empresa",
+              ].map((t) => (
+                <p
+                  key={t}
+                  className="text-xs text-default-500 flex items-center gap-1"
+                >
+                  <span className="text-success">✓</span> {t}
+                </p>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Breadcrumbs del wizard ───────────────────────────────────────────────────
+
+function WizardBreadcrumbs({
+  pasos,
+  pasoActual,
+  pasosVisitados,
+  onNavigate,
+}: {
+  pasos: Array<{ id: PasoId; label: string }>;
+  pasoActual: PasoId;
+  pasosVisitados: Set<PasoId>;
+  onNavigate: (id: PasoId) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <Breadcrumbs size="sm" classNames={{ list: "flex-wrap gap-y-2" }}>
+        {pasos.map((paso) => {
+          const esCurrent = paso.id === pasoActual;
+          const esVisitado = pasosVisitados.has(paso.id) && !esCurrent;
+
+          return (
+            <BreadcrumbItem
+              key={paso.id}
+              isCurrent={esCurrent}
+              onPress={esVisitado ? () => onNavigate(paso.id) : undefined}
+              classNames={{
+                item: [
+                  "text-xs font-medium transition-colors",
+                  esCurrent
+                    ? "text-danger"
+                    : esVisitado
+                      ? "text-success cursor-pointer hover:text-success-600"
+                      : "text-default-400 cursor-not-allowed pointer-events-none",
+                ].join(" "),
+                separator: "text-default-300",
+              }}
+            >
+              {paso.label}
+            </BreadcrumbItem>
+          );
+        })}
+      </Breadcrumbs>
+    </div>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function CursoModal({
   isOpen,
   onClose,
-  onSubmit,
+  onCursoCreado,
   cursoToEdit,
-  isLoading = false,
 }: CursoModalProps) {
-  const [form, setForm] = useState<Record<string, any>>({ ...FORM_INITIAL });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [participanteModalOpen, setParticipanteModalOpen] = useState(false);
 
-  // DateRangePicker value: { start: CalendarDate | null, end: CalendarDate | null }
-  const [dateRange, setDateRange] = useState<{ start: any; end: any } | null>(null);
+  const [cursoAbiertoCreado, setCursoAbiertoCreado] =
+    useState<CursoCerradoDetalle | null>(null);
 
-  const [instructorMode, setInstructorMode] = useState<InstructorMode | null>(null);
-  const [instructorSearch, setInstructorSearch] = useState("");
-  const [debouncedSearch] = useDebounce(instructorSearch, 400);
-  const [instructores, setInstructores] = useState<any[]>([]);
-  const [isLoadingInstructores, setIsLoadingInstructores] = useState(false);
-  const [instructorSeleccionado, setInstructorSeleccionado] = useState<any | null>(null);
-  const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
+  const [siguientePasoOpen, setSiguientePasoOpen] = useState(false);
 
-  // ── Reset al cerrar ──────────────────────────────────────────
-  useEffect(() => {
-    if (!isOpen) {
-      setForm({ ...FORM_INITIAL });
-      setDateRange(null);
-      setInstructorSearch("");
-      setInstructores([]);
-      setErrors({});
-      setInstructorMode(null);
-      setInstructorSeleccionado(null);
-    }
-  }, [isOpen]);
+  const [ultimoParticipante, setUltimoParticipante] =
+    useState<ParticipanteCreado | null>(null);
 
-  // ── Modo edición ─────────────────────────────────────────────
-  useEffect(() => {
-    if (cursoToEdit && isOpen) {
-      const fi = cursoToEdit.fechaInicio?.substring(0, 10) ?? "";
-      const ff = cursoToEdit.fechaFin?.substring(0, 10) ?? "";
+  const w = useCursoWizard({
+    isOpen,
+    onClose,
+    onCursoCreado,
+    cursoToEdit,
+    onCursoAbiertoCreado: (curso) => {
+      setCursoAbiertoCreado(curso);
+      setParticipanteModalOpen(true);
+    },
+  });
 
-      setForm({
-        nombre: cursoToEdit.nombre ?? "",
-        descripcion: cursoToEdit.descripcion ?? "",
-        precioAfiliado: String(cursoToEdit.precioAfiliado ?? ""),
-        precioPublico: String(cursoToEdit.precioPublico ?? ""),
-        precioEstudiante: String(cursoToEdit.precioEstudiante ?? ""),
-        duracion: String(cursoToEdit.duracion ?? ""),
-        horario: cursoToEdit.horario ?? "",
-        fechaInicio: fi,
-        fechaFin: ff,
-        aula: cursoToEdit.aula ?? "",
-        nivelGerencial: cursoToEdit.nivelGerencial ?? "",
-        activo: cursoToEdit.activo ?? true,
-        instructorId: cursoToEdit.instructorId ?? null,
-      });
+  const hideClose = w.pasoActual === "participantes" && !w.isEditMode;
 
-      setDateRange(
-        fi && ff
-          ? { start: parseDate(fi), end: parseDate(ff) }
-          : null
-      );
+  const nombreUltimoParticipante = ultimoParticipante
+    ? [
+        ultimoParticipante.nombre,
+        ultimoParticipante.apellidoPaterno,
+        ultimoParticipante.apellidoMaterno,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : undefined;
 
-      setInstructorMode("buscar");
-    }
-  }, [cursoToEdit, isOpen]);
-
-  // ── Cargar instructor en edición ─────────────────────────────
-  useEffect(() => {
-    const loadInstructor = async () => {
-      if (cursoToEdit?.instructorId && isOpen) {
-        const inst = await obtenerInstructorPorId(cursoToEdit.instructorId);
-        setInstructorSearch(
-          `${inst.nombre} ${inst.apellidoPaterno} ${inst.apellidoMaterno ?? ""}`.trim()
-        );
-        setInstructores([inst]);
-        setInstructorSeleccionado(inst);
-      }
-    };
-    loadInstructor();
-  }, [cursoToEdit, isOpen]);
-
-  // ── Buscar instructores con debounce ─────────────────────────
-  useEffect(() => {
-    const fetchInstructores = async () => {
-      if (instructorMode !== "buscar") return;
-      if (!debouncedSearch || debouncedSearch.length < 2) {
-        setInstructores([]);
-        return;
-      }
-      try {
-        setIsLoadingInstructores(true);
-        const data = await buscarInstructores(debouncedSearch);
-        setInstructores(data);
-      } finally {
-        setIsLoadingInstructores(false);
-      }
-    };
-    fetchInstructores();
-  }, [debouncedSearch, instructorMode]);
-
-  // ── Helpers ──────────────────────────────────────────────────
-  const handleChange = (field: string, value: any) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  const finalizarRegistroAbierto = () => {
+    setSiguientePasoOpen(false);
+    setParticipanteModalOpen(false);
+    setUltimoParticipante(null);
+    setCursoAbiertoCreado(null);
   };
-
-  // Sync DateRangePicker → form fields
-  const handleDateRangeChange = (range: { start: any; end: any } | null) => {
-    setDateRange(range);
-    const fi = range?.start ? range.start.toString() : "";
-    const ff = range?.end ? range.end.toString() : "";
-    setForm((prev) => ({ ...prev, fechaInicio: fi, fechaFin: ff }));
-    if (errors.fechaInicio || errors.fechaFin)
-      setErrors((prev) => ({ ...prev, fechaInicio: "", fechaFin: "" }));
-  };
-
-  const handleModeChange = (mode: InstructorMode) => {
-    if (mode === instructorMode && mode !== "crear") return;
-    setInstructorMode(mode);
-    if (mode !== "buscar") {
-      handleChange("instructorId", null);
-      setInstructorSearch("");
-      setInstructores([]);
-      setInstructorSeleccionado(null);
-    }
-    if (errors.instructorId) setErrors((prev) => ({ ...prev, instructorId: "" }));
-    if (mode === "crear") setModalInstructorAbierto(true);
-  };
-
-  // ── Instructor creado desde modal anidado ────────────────────
-  const handleInstructorCreado = (instructor: any) => {
-    handleChange("instructorId", instructor.id);
-    setInstructorSeleccionado(instructor);
-    setInstructorSearch(
-      `${instructor.nombre} ${instructor.apellidoPaterno} ${instructor.apellidoMaterno ?? ""}`.trim()
-    );
-    setInstructores([instructor]);
-    setInstructorMode("buscar");
-    setModalInstructorAbierto(false);
-    sileo.success({
-      title: "¡Instructor asignado!",
-      description: `${instructor.nombre} ${instructor.apellidoPaterno} fue creado y asignado al curso.`,
-    });
-  };
-
-  // ── Validación ───────────────────────────────────────────────
-  const validate = (): Record<string, string> => {
-    const e: Record<string, string> = {};
-    if (!form.nombre || form.nombre.trim().length < 3)
-      e.nombre = "El nombre debe tener al menos 3 caracteres";
-    if (!form.aula) e.aula = "Aula requerida";
-    if (!form.nivelGerencial) e.nivelGerencial = "Nivel gerencial requerido";
-    if (!form.horario) e.horario = "Horario requerido";
-
-    const pA = Number(form.precioAfiliado);
-    const pP = Number(form.precioPublico);
-    const pE = Number(form.precioEstudiante);
-    if (form.precioAfiliado === "" || isNaN(pA)) e.precioAfiliado = "Precio inválido";
-    if (form.precioPublico === "" || isNaN(pP)) e.precioPublico = "Precio inválido";
-    if (form.precioEstudiante === "" || isNaN(pE)) e.precioEstudiante = "Precio inválido";
-    if (!e.precioAfiliado && !e.precioPublico && pA > pP)
-      e.precioAfiliado = "Precio afiliado debe ser ≤ precio público";
-
-    if (!form.fechaInicio) e.fechaInicio = "Fecha inicio requerida";
-    if (!form.fechaFin) e.fechaFin = "Fecha fin requerida";
-    if (form.fechaInicio && form.fechaFin && form.fechaFin <= form.fechaInicio)
-      e.fechaFin = "Fecha fin debe ser posterior a fecha inicio";
-
-    if (instructorMode === "buscar" && !form.instructorId)
-      e.instructorId = "Selecciona un instructor de la lista";
-
-    return e;
-  };
-
-  // ── Submit ───────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors = validate();
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      sileo.warning({
-        title: "Campos incompletos",
-        description: "Revisa los campos marcados antes de continuar.",
-      });
-      return;
-    }
-
-    try {
-      await onSubmit({
-        ...form,
-        precioAfiliado: Number(form.precioAfiliado),
-        precioPublico: Number(form.precioPublico),
-        precioEstudiante: Number(form.precioEstudiante),
-        duracion: form.duracion ? Number(form.duracion) : undefined,
-        instructorId: instructorMode === "despues" ? null : form.instructorId,
-      });
-
-      sileo.success({
-        title: cursoToEdit ? "¡Curso actualizado!" : "¡Curso creado!",
-        description: cursoToEdit
-          ? `"${form.nombre}" se actualizó correctamente.`
-          : `"${form.nombre}" se creó correctamente.`,
-      });
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ??
-        err?.response?.data?.error ??
-        err?.message ??
-        "Error desconocido";
-      sileo.error({
-        title: "Error al guardar",
-        description: typeof msg === "string" ? msg : "No se pudo guardar el curso.",
-      });
-    }
-  };
-
-  // Error combinado para el DateRangePicker
-  const dateRangeError = errors.fechaInicio || errors.fechaFin;
 
   return (
     <>
@@ -300,431 +254,257 @@ export default function CursoModal({
         title={
           <div className="flex items-center gap-2">
             <AcademicCapIcon className="w-6 h-6 text-danger" />
-            <span>{cursoToEdit ? "Editar Curso" : "Nuevo Curso"}</span>
+
+            <span>{w.tituloModal}</span>
+
+            {w.tipoCurso && (
+              <Chip
+                size="sm"
+                variant="flat"
+                color={w.tipoCurso === "CERRADO" ? "warning" : "primary"}
+                className="ml-2"
+              >
+                {w.tipoCurso === "CERRADO" ? "Cerrado" : "Abierto"}
+              </Chip>
+            )}
           </div>
         }
         size="3xl"
-        isLoading={isLoading}
-        className="bg-gradient-to-br from-default-50 to-default-100 dark:from-default-900/50 dark:to-default-800/50"
+        isLoading={w.isSubmitting}
         hideFooter
+        hideCloseButton={hideClose}
       >
-        <form id="modal-form" onSubmit={handleSubmit} className="space-y-6">
-          {/* Información básica */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <DocumentTextIcon className="w-5 h-5 text-danger" />
-              <h3 className="text-lg font-semibold text-default-800">Información básica</h3>
-            </div>
-            <Divider className="bg-danger/20" />
+        {/* Breadcrumbs — ocultar en el paso de selección de tipo */}
+        {w.pasoActual !== "tipo" && (
+          <WizardBreadcrumbs
+            pasos={w.pasos}
+            pasoActual={w.pasoActual}
+            pasosVisitados={w.pasosVisitados}
+            onNavigate={w.irA}
+          />
+        )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Nombre del curso"
-                value={form.nombre}
-                onValueChange={(v) => handleChange("nombre", v)}
-                isRequired
-                isInvalid={!!errors.nombre}
-                errorMessage={errors.nombre}
-                className="col-span-2"
-                classNames={{ input: "text-base", label: "font-medium" }}
-                placeholder="Ej: Liderazgo transformacional"
-                startContent={<AcademicCapIcon className="w-4 h-4 text-default-400" />}
-                size="lg"
-              />
+        {/* ── Paso: selección de tipo ──────────────────────────────────── */}
+        {w.pasoActual === "tipo" && (
+          <PasoTipo onSelect={w.handleSelectTipo} />
+        )}
 
-              <Textarea
-                label="Descripción"
-                value={form.descripcion}
-                onValueChange={(v) => handleChange("descripcion", v)}
-                className="col-span-2"
-                minRows={3}
-                placeholder="Describe el contenido y objetivos del curso..."
-                classNames={{ label: "font-medium" }}
-              />
-            </div>
-          </div>
+        {/* ── Paso: datos del curso ────────────────────────────────────── */}
+        {w.pasoActual === "datos" && (
+          <Paso1DatosCurso
+            form={w.form}
+            errors={w.errors}
+            dateRange={w.dateRange}
+            preciosCerrado={w.preciosCerrado}
+            costoTotal={w.costoTotal}
+            numP={w.numP}
+            precioPorP={w.precioPorP}
+            instructorMode={w.instructorMode}
+            instructorSearch={w.instructorSearch}
+            instructores={w.instructores}
+            loadingInst={w.loadingInst}
+            instructorSel={w.instructorSel}
+            onChangeForm={w.handleChange}
+            onChangeDateRange={w.handleDateRangeChange}
+            onChangePrecio={(field, value) =>
+              w.setPreciosCerrado((p) => ({
+                ...p,
+                [field]: value,
+              }))
+            }
+            onInstructorModeChange={w.handleInstructorModeChange}
+            onInstructorSearchChange={w.setInstructorSearch}
+            onInstructorSelect={(id) => {
+              const found = w.instructores.find((i) => i.id === id);
 
-          {/* Precios y duración */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <CurrencyDollarIcon className="w-5 h-5 text-danger" />
-              <h3 className="text-lg font-semibold text-default-800">Precios y duración</h3>
-            </div>
-            <Divider className="bg-danger/20" />
+              if (found) {
+                w.selectInstructor(found);
+              }
+            }}
+            onClearInstructor={w.clearInstructor}
+            onOpenModalInstructor={() => w.setModalInstructorOpen(true)}
+            onSiguiente={w.handleSiguiente}
+            onClose={onClose}
+            mostrarPrecios={false}
+          />
+        )}
 
-            <div className="grid grid-cols-3 gap-4">
-              <Input
-                type="number"
-                label="Precio Afiliado"
-                value={form.precioAfiliado}
-                onValueChange={(v) => handleChange("precioAfiliado", v)}
-                isRequired
-                isInvalid={!!errors.precioAfiliado}
-                errorMessage={errors.precioAfiliado}
-                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
-                min={0}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-              />
+        {/* ── Paso: precios cerrado ────────────────────────────────────── */}
+        {w.pasoActual === "precios" && w.tipoCurso === "CERRADO" && (
+          <PasoPreciosCerrado
+            preciosCerrado={w.preciosCerrado}
+            costoTotal={w.costoTotal}
+            numP={w.numP}
+            precioPorP={w.precioPorP}
+            errors={w.errors}
+            onChangePrecio={(field, value) =>
+              w.setPreciosCerrado((p) => ({
+                ...p,
+                [field]: value,
+              }))
+            }
+            onSiguiente={w.handleSiguiente}
+            onAnterior={w.handleAnterior}
+          />
+        )}
 
-              <Input
-                type="number"
-                label="Precio Público"
-                value={form.precioPublico}
-                onValueChange={(v) => handleChange("precioPublico", v)}
-                isRequired
-                isInvalid={!!errors.precioPublico}
-                errorMessage={errors.precioPublico}
-                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
-                min={0}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-              />
+        {/* ── Paso: precios abierto ────────────────────────────────────── */}
+        {w.pasoActual === "precios" && w.tipoCurso === "ABIERTO" && (
+          <PasoPreciosAbierto
+            preciosAbierto={w.preciosAbierto}
+            errors={w.errors}
+            onChangePrecio={(field, value) =>
+              w.setPreciosAbierto((p) => ({
+                ...p,
+                [field]: value,
+              }))
+            }
+            onSiguiente={w.handleSiguiente}
+            onAnterior={w.handleAnterior}
+          />
+        )}
 
-              <Input
-                type="number"
-                label="Precio Estudiante"
-                value={form.precioEstudiante}
-                onValueChange={(v) => handleChange("precioEstudiante", v)}
-                isRequired
-                isInvalid={!!errors.precioEstudiante}
-                errorMessage={errors.precioEstudiante}
-                startContent={<span className="text-default-400 text-sm font-medium">$</span>}
-                min={0}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-              />
+        {/* ── Paso: empresa solo CERRADO ───────────────────────────────── */}
+        {w.pasoActual === "empresa" && (
+          <Paso2Empresa
+            empresaMode={w.empresaMode}
+            empresaSearch={w.empresaSearch}
+            empresas={w.empresas}
+            loadingEmp={w.loadingEmp}
+            empresaSel={w.empresaSel}
+            empresaErrors={w.empresaErrors}
+            onModeChange={(mode) => {
+              w.setEmpresaMode(mode);
+              w.clearEmpresa();
+            }}
+            onSearchChange={w.setEmpresaSearch}
+            onEmpresaSelect={(id) => {
+              const found = w.empresas.find((e) => e.id === id);
 
-              <Input
-                type="number"
-                label="Duración (horas)"
-                value={form.duracion}
-                onValueChange={(v) => handleChange("duracion", v)}
-                min={1}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-                placeholder="40"
-                endContent={<span className="text-default-400 text-sm">hrs</span>}
-              />
-            </div>
-          </div>
+              if (found) {
+                w.selectEmpresa(found);
+              }
+            }}
+            onClearEmpresa={w.clearEmpresa}
+            onOpenModalEmpresa={() => w.setModalEmpresaOpen(true)}
+            onSiguiente={w.handleSiguiente}
+            onAnterior={w.handleAnterior}
+          />
+        )}
 
-          {/* Horario y ubicación */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-danger" />
-              <h3 className="text-lg font-semibold text-default-800">Horario y ubicación</h3>
-            </div>
-            <Divider className="bg-danger/20" />
+        {/* ── Paso: confirmación ───────────────────────────────────────── */}
+        {w.pasoActual === "confirmacion" && w.tipoCurso && (
+          <Paso3Confirmacion
+            tipoCurso={w.tipoCurso}
+            form={w.form}
+            empresaSel={w.tipoCurso === "CERRADO" ? w.empresaSel : null}
+            instructorSel={w.instructorSel}
+            precioPorP={w.tipoCurso === "CERRADO" ? w.precioPorP : 0}
+            numP={w.tipoCurso === "CERRADO" ? w.numP : 0}
+            costoTotal={w.tipoCurso === "CERRADO" ? w.costoTotal : 0}
+            isLoading={w.isSubmitting}
+            isEditMode={w.isEditMode}
+            onSubmit={w.handleSubmitCurso}
+            onAnterior={w.handleAnterior}
+          />
+        )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Horario"
-                value={form.horario}
-                onValueChange={(v) => handleChange("horario", v)}
-                placeholder="09:00 - 14:00"
-                isRequired
-                isInvalid={!!errors.horario}
-                errorMessage={errors.horario}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-                startContent={<ClockIcon className="w-4 h-4 text-default-400" />}
-              />
-
-              <Input
-                label="Aula"
-                value={form.aula}
-                onValueChange={(v) => handleChange("aula", v)}
-                isRequired
-                isInvalid={!!errors.aula}
-                errorMessage={errors.aula}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-                startContent={<MapPinIcon className="w-4 h-4 text-default-400" />}
-                placeholder="Ej: Auditorio A"
-              />
-
-              {/* ── DateRangePicker (reemplaza los dos inputs de fecha) ── */}
-              <DateRangePicker
-                label="Periodo del curso"
-                value={dateRange}
-                onChange={handleDateRangeChange}
-                isRequired
-                isInvalid={!!dateRangeError}
-                errorMessage={dateRangeError}
-                classNames={{ label: "font-medium" }}
-                size="lg"
-                className="col-span-2"
-                visibleMonths={2}
-                pageBehavior="single"
-                startContent={<CalendarIcon className="w-4 h-4 text-default-400 flex-shrink-0" />}
-              />
-            </div>
-          </div>
-
-          {/* Nivel gerencial y estado */}
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Nivel gerencial"
-              selectedKeys={form.nivelGerencial ? new Set([form.nivelGerencial]) : new Set()}
-              onSelectionChange={(keys) => {
-                const val = Array.from(keys)[0] as string;
-                handleChange("nivelGerencial", val ?? "");
-              }}
-              isRequired
-              isInvalid={!!errors.nivelGerencial}
-              errorMessage={errors.nivelGerencial}
-              classNames={{ label: "font-medium" }}
-              size="lg"
-              placeholder="Selecciona un nivel"
-              startContent={<ChevronDownIcon className="w-4 h-4 text-default-400" />}
-            >
-              {NIVELES_GERENCIALES.map((n) => (
-                <SelectItem key={n.key} description={n.description}>
-                  {n.label}
-                </SelectItem>
-              ))}
-            </Select>
-
-            <div className="flex items-center h-full pt-2">
-              <Switch
-                isSelected={form.activo}
-                onValueChange={(v) => handleChange("activo", v)}
-                color="success"
-                size="lg"
-                classNames={{ label: "font-medium" }}
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{form.activo ? "Activo" : "Inactivo"}</span>
-                  <span className="text-xs text-default-400">
-                    {form.activo ? "Curso disponible" : "Curso no visible"}
-                  </span>
-                </div>
-              </Switch>
-            </div>
-          </div>
-
-          {/* ═══ SECCIÓN INSTRUCTOR ═══ */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <UserPlusIcon className="w-5 h-5 text-danger" />
-              <h3 className="text-lg font-semibold text-default-800">Instructor</h3>
-              <Chip size="sm" variant="flat" color="default" className="ml-2">
-                Opcional
-              </Chip>
-            </div>
-            <Divider className="bg-danger/20" />
-
-            <div className="grid grid-cols-3 gap-3">
-              <Card
-                isPressable
-                onPress={() => handleModeChange("buscar")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "buscar"
-                    ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
-                    : "border-default-200 hover:border-danger/50 hover:shadow-md"
-                  }`}
-              >
-                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${instructorMode === "buscar" ? "bg-danger/10" : "bg-default-100"}`}>
-                    <MagnifyingGlassIcon className={`w-6 h-6 ${instructorMode === "buscar" ? "text-danger" : "text-default-500"}`} />
-                  </div>
-                  <span className={`text-sm font-semibold ${instructorMode === "buscar" ? "text-danger" : "text-default-600"}`}>
-                    Buscar existente
-                  </span>
-                  <span className="text-xs text-default-400">Selecciona de la base</span>
-                </CardBody>
-              </Card>
-
-              <Card
-                isPressable
-                onPress={() => handleModeChange("crear")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "crear"
-                    ? "border-danger bg-danger-50 dark:bg-danger-900/20 shadow-lg shadow-danger/20"
-                    : "border-default-200 hover:border-danger/50 hover:shadow-md"
-                  }`}
-              >
-                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${instructorMode === "crear" ? "bg-danger/10" : "bg-default-100"}`}>
-                    <UserPlusIcon className={`w-6 h-6 ${instructorMode === "crear" ? "text-danger" : "text-default-500"}`} />
-                  </div>
-                  <span className={`text-sm font-semibold ${instructorMode === "crear" ? "text-danger" : "text-default-600"}`}>
-                    Crear nuevo
-                  </span>
-                  <span className="text-xs text-default-400">Registrar instructor</span>
-                </CardBody>
-              </Card>
-
-              <Card
-                isPressable
-                onPress={() => handleModeChange("despues")}
-                className={`cursor-pointer border-2 transition-all duration-300 hover:scale-[1.02] ${instructorMode === "despues"
-                    ? "border-warning bg-warning-50 dark:bg-warning-900/20 shadow-lg shadow-warning/20"
-                    : "border-default-200 hover:border-warning/50 hover:shadow-md"
-                  }`}
-              >
-                <CardBody className="flex flex-col items-center gap-2 py-4 text-center">
-                  <div className={`p-2 rounded-full transition-all ${instructorMode === "despues" ? "bg-warning/10" : "bg-default-100"}`}>
-                    <ClockIcon className={`w-6 h-6 ${instructorMode === "despues" ? "text-warning" : "text-default-500"}`} />
-                  </div>
-                  <span className={`text-sm font-semibold ${instructorMode === "despues" ? "text-warning" : "text-default-600"}`}>
-                    Asignar después
-                  </span>
-                  <span className="text-xs text-default-400">Pendiente</span>
-                </CardBody>
-              </Card>
-            </div>
-
-            {instructorMode === "buscar" && (
-              <div className="mt-4 animate-fade-in">
-                {instructorSeleccionado && form.instructorId ? (
-                  <div className="flex items-center gap-3 rounded-xl bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 p-4">
-                    <div className="p-1.5 bg-success-100 dark:bg-success-900/40 rounded-full">
-                      <CheckCircleIcon className="w-5 h-5 text-success-600 dark:text-success-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-success-700 dark:text-success-300">
-                        <span className="font-semibold">
-                          {instructorSeleccionado.nombre} {instructorSeleccionado.apellidoPaterno}
-                        </span>{" "}
-                        seleccionado como instructor
-                      </p>
-                      {instructorSeleccionado.email && (
-                        <p className="text-xs text-success-600 dark:text-success-400 mt-1">
-                          {instructorSeleccionado.email}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      color="success"
-                      onPress={() => {
-                        handleChange("instructorId", null);
-                        setInstructorSeleccionado(null);
-                        setInstructorSearch("");
-                        setInstructores([]);
-                      }}
-                      className="font-medium"
-                    >
-                      Cambiar
-                    </Button>
-                  </div>
-                ) : (
-                  <Autocomplete
-                    label="Buscar instructor"
-                    inputValue={instructorSearch}
-                    onInputChange={(val) => {
-                      setInstructorSearch(val);
-                      if (!val) {
-                        handleChange("instructorId", null);
-                        setInstructorSeleccionado(null);
-                      }
-                    }}
-                    items={instructores}
-                    selectedKey={form.instructorId ? String(form.instructorId) : null}
-                    onSelectionChange={(key) => {
-                      if (!key) {
-                        handleChange("instructorId", null);
-                        setInstructorSeleccionado(null);
-                        return;
-                      }
-                      const found = instructores.find((i) => String(i.id) === String(key));
-                      handleChange("instructorId", Number(key));
-                      setInstructorSeleccionado(found ?? null);
-                    }}
-                    isLoading={isLoadingInstructores}
-                    placeholder="Escribe el nombre del instructor..."
-                    isInvalid={!!errors.instructorId}
-                    errorMessage={errors.instructorId}
-                    size="lg"
-                    classNames={{ label: "font-medium" }}
-                    startContent={<MagnifyingGlassIcon className="w-4 h-4 text-default-400" />}
-                  >
-                    {(item: any) => (
-                      <AutocompleteItem
-                        key={String(item.id)}
-                        textValue={`${item.nombre} ${item.apellidoPaterno} ${item.apellidoMaterno ?? ""}`.trim()}
-                        description={item.email}
-                      >
-                        {item.nombre} {item.apellidoPaterno} {item.apellidoMaterno ?? ""}
-                      </AutocompleteItem>
-                    )}
-                  </Autocomplete>
-                )}
-              </div>
-            )}
-
-            {instructorMode === "crear" && !form.instructorId && (
-              <div className="flex items-start gap-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 p-4 mt-4">
-                <div className="p-1.5 bg-primary-100 dark:bg-primary-900/40 rounded-full">
-                  <InformationCircleIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                    Creando nuevo instructor
-                  </p>
-                  <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
-                    Completa el formulario del instructor que se abrirá. Al guardarlo se asignará automáticamente a este curso.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {instructorMode === "despues" && (
-              <div className="flex items-start gap-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 p-4 mt-4">
-                <div className="p-1.5 bg-warning-100 dark:bg-warning-900/40 rounded-full">
-                  <ExclamationTriangleIcon className="w-5 h-5 text-warning-600 dark:text-warning-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-warning-700 dark:text-warning-300">
-                    Instructor pendiente
-                  </p>
-                  <p className="text-xs text-warning-600 dark:text-warning-400 mt-1">
-                    El curso se guardará sin instructor. Recuerda asignarlo desde el detalle del curso antes de que inicie.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {!instructorMode && (
-              <p className="text-sm text-default-400 text-center py-4 italic">
-                Selecciona una opción para continuar con la asignación del instructor
-              </p>
-            )}
-          </div>
-
-          {/* Botones de acción */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-default-200 dark:border-default-800">
-            <Button
-              color="default"
-              variant="light"
-              onPress={onClose}
-              size="lg"
-              className="font-medium"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              color="danger"
-              size="lg"
-              isLoading={isLoading}
-              className="font-medium px-8"
-              startContent={!isLoading && <AcademicCapIcon className="w-5 h-5" />}
-            >
-              {cursoToEdit ? "Actualizar curso" : "Crear curso"}
-            </Button>
-          </div>
-        </form>
+        {/* ── Paso: participantes solo CERRADO ─────────────────────────── */}
+        {w.pasoActual === "participantes" && w.tipoCurso === "CERRADO" && (
+          <Paso4Participantes
+            tipoCurso="CERRADO"
+            form={w.form}
+            empresaSel={w.empresaSel}
+            participanteForm={w.participanteForm}
+            participanteErrors={w.participanteErrors}
+            participantesRegistrados={w.participantesRegistrados}
+            participantesLista={w.participantesLista}
+            numP={w.numP}
+            precioPorP={w.precioPorP}
+            isSubmitting={w.isSubmittingParticipante}
+            isEditMode={w.isEditMode}
+            onChangeParticipante={w.handleParticipanteChange}
+            onRegistrar={w.handleRegistrarParticipante}
+            onTerminarDespues={w.handleTerminarDespues}
+            onClose={onClose}
+          />
+        )}
       </ModalForm>
 
+      {/* Modal anidado: instructor */}
       <InstructorModal
-        isOpen={modalInstructorAbierto}
+        isOpen={w.modalInstructorOpen}
         onClose={() => {
-          setModalInstructorAbierto(false);
-          if (!form.instructorId) setInstructorMode(null);
+          w.setModalInstructorOpen(false);
+
+          if (!w.form.instructorId) {
+            w.handleInstructorModeChange("despues");
+          }
         }}
-        onSuccess={handleInstructorCreado}
+        onSuccess={w.selectInstructor}
+      />
+
+      {/* Modal anidado: empresa */}
+      <EmpresaModalProvider origen="curso">
+        <EmpresaModal
+          isOpen={w.modalEmpresaOpen}
+          onClose={() => {
+            w.setModalEmpresaOpen(false);
+
+            if (!w.empresaSel) {
+              w.setEmpresaMode("buscar");
+            }
+          }}
+          onSuccess={(empresa) => {
+            w.handleEmpresaCreada({
+              ...empresa,
+              saldoFecapDisponible: 0,
+            });
+          }}
+        />
+      </EmpresaModalProvider>
+
+      {/* Modal de participante para curso ABIERTO */}
+      <ParticipanteModal
+        isOpen={participanteModalOpen}
+        onClose={() => {
+          setParticipanteModalOpen(false);
+        }}
+        cursoIdParaAsignar={cursoAbiertoCreado?.id ?? null}
+        onSuccess={(participante) => {
+          setParticipanteModalOpen(false);
+          setUltimoParticipante(participante);
+          setSiguientePasoOpen(true);
+        }}
+      />
+
+      {/* Pregunta después de registrar participante en curso ABIERTO */}
+      <SiguientePasoModal
+        isOpen={siguientePasoOpen}
+        onClose={() => {
+          setSiguientePasoOpen(false);
+        }}
+        titulo="Participante registrado"
+        subtitulo={nombreUltimoParticipante}
+        opciones={[
+          {
+            label: "Registrar otro participante",
+            descripcion: "Captura otro participante para este mismo curso abierto.",
+            icono: <span className="text-white text-lg font-bold">+</span>,
+            color: "from-primary-400 to-blue-500",
+            onClick: () => {
+              setUltimoParticipante(null);
+              setParticipanteModalOpen(true);
+            },
+          },
+          {
+            label: "Finalizar registro",
+            descripcion: "Cerrar el registro de participantes por ahora.",
+            icono: <span className="text-white text-lg font-bold">✓</span>,
+            color: "from-emerald-400 to-teal-500",
+            onClick: finalizarRegistroAbierto,
+          },
+        ]}
       />
     </>
   );

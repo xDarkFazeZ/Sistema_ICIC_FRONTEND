@@ -19,7 +19,7 @@ Font.register({
     ],
 });
 
-// Paleta de colores rojos profesional
+// Paleta de colores
 const colors = {
     primaryRed: '#8B0000',
     secondaryRed: '#C62828',
@@ -208,7 +208,8 @@ interface DashboardPDFProps {
         distribucionCursos: Array<{ nombre: string; total: number }>;
         saldoFecapPorMes: Array<{ mes: string; ingreso: number; gasto: number }>;
         horasHombrePorMes: Array<{ mes: string; total: number }>;
-        ingresosPorMesEfectivoTransferencia: Array<{ mes: string; total: number }>; // ← NUEVO
+        ingresosPorMesEfectivoTransferencia: Array<{ mes: string; total: number }>;
+        ingresosCursosCerradosPorMes: Array<{ mes: string; total: number }>;
     };
     fechaGeneracion: string;
 }
@@ -228,7 +229,14 @@ const formatMes = (mesKey: string): string => {
 };
 
 // Componente para gráfico de barras
-const BarChartSimulator = ({ data, color, label }: { data: Array<{ label: string; value: number }>; color: string; label?: string }) => {
+const BarChartSimulator = ({
+    data,
+    color,
+}: {
+    data: Array<{ label: string; value: number }>;
+    color: string;
+    label?: string;
+}) => {
     const maxValue = Math.max(...data.map(d => d.value), 1);
 
     return (
@@ -237,10 +245,19 @@ const BarChartSimulator = ({ data, color, label }: { data: Array<{ label: string
                 <View key={idx} style={{ marginBottom: 6 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                         <Text style={{ fontSize: 7 }}>{item.label}</Text>
-                        <Text style={{ fontSize: 7, fontWeight: 'bold', color }}>{item.value.toLocaleString('es-MX')}</Text>
+                        <Text style={{ fontSize: 7, fontWeight: 'bold', color }}>
+                            {item.value.toLocaleString('es-MX')}
+                        </Text>
                     </View>
                     <View style={{ backgroundColor: '#E0E0E0', height: 8, borderRadius: 4 }}>
-                        <View style={{ backgroundColor: color, width: `${(item.value / maxValue) * 100}%`, height: 8, borderRadius: 4 }} />
+                        <View
+                            style={{
+                                backgroundColor: color,
+                                width: `${(item.value / maxValue) * 100}%`,
+                                height: 8,
+                                borderRadius: 4,
+                            }}
+                        />
                     </View>
                 </View>
             ))}
@@ -248,8 +265,12 @@ const BarChartSimulator = ({ data, color, label }: { data: Array<{ label: string
     );
 };
 
-// Componente para gráfico FECAP (líneas simuladas)
-const LineChartSimulator = ({ data }: { data: Array<{ label: string; ingreso: number; gasto: number }> }) => {
+// Componente para gráfico FECAP
+const LineChartSimulator = ({
+    data,
+}: {
+    data: Array<{ label: string; ingreso: number; gasto: number }>;
+}) => {
     const maxValue = Math.max(...data.flatMap(d => [d.ingreso, d.gasto]), 1);
 
     return (
@@ -269,15 +290,33 @@ const LineChartSimulator = ({ data }: { data: Array<{ label: string; ingreso: nu
                     <Text style={{ fontSize: 7, fontWeight: 'bold', marginBottom: 4 }}>{item.label}</Text>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 6, color: '#22c55e' }}>Ingreso: {formatCurrency(item.ingreso)}</Text>
+                            <Text style={{ fontSize: 6, color: '#22c55e' }}>
+                                Ingreso: {formatCurrency(item.ingreso)}
+                            </Text>
                             <View style={{ backgroundColor: '#E0E0E0', height: 6, borderRadius: 3, marginTop: 2 }}>
-                                <View style={{ backgroundColor: '#22c55e', width: `${(item.ingreso / maxValue) * 100}%`, height: 6, borderRadius: 3 }} />
+                                <View
+                                    style={{
+                                        backgroundColor: '#22c55e',
+                                        width: `${(item.ingreso / maxValue) * 100}%`,
+                                        height: 6,
+                                        borderRadius: 3,
+                                    }}
+                                />
                             </View>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 6, color: '#ef4444' }}>Gasto: {formatCurrency(item.gasto)}</Text>
+                            <Text style={{ fontSize: 6, color: '#ef4444' }}>
+                                Gasto: {formatCurrency(item.gasto)}
+                            </Text>
                             <View style={{ backgroundColor: '#E0E0E0', height: 6, borderRadius: 3, marginTop: 2 }}>
-                                <View style={{ backgroundColor: '#ef4444', width: `${(item.gasto / maxValue) * 100}%`, height: 6, borderRadius: 3 }} />
+                                <View
+                                    style={{
+                                        backgroundColor: '#ef4444',
+                                        width: `${(item.gasto / maxValue) * 100}%`,
+                                        height: 6,
+                                        borderRadius: 3,
+                                    }}
+                                />
                             </View>
                         </View>
                     </View>
@@ -288,13 +327,13 @@ const LineChartSimulator = ({ data }: { data: Array<{ label: string; ingreso: nu
 };
 
 export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fechaGeneracion }) => {
-    // Calcular estadísticas
+    // ── Estadísticas generales ──────────────────────────────────────────────
     const totalInscripciones = dashboardData.inscripcionesPorMes.reduce((sum, m) => sum + m.total, 0);
     const totalCursos = dashboardData.distribucionCursos.length;
     const totalHorasHombre = dashboardData.horasHombrePorMes.reduce((sum, m) => sum + m.total, 0);
     const promedioHH = totalHorasHombre / (dashboardData.horasHombrePorMes.length || 1);
 
-    // Preparar datos para gráficos
+    // ── Datos para gráficos ─────────────────────────────────────────────────
     const inscripcionesData = dashboardData.inscripcionesPorMes.map(item => ({
         label: formatMes(item.mes),
         value: item.total,
@@ -315,14 +354,21 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
         label: formatMes(item.mes),
         value: item.total,
     }));
-
     const totalIngresos = dashboardData.ingresosPorMesEfectivoTransferencia
+        .reduce((sum, m) => sum + m.total, 0);
+
+    const ingresosCerradosData = dashboardData.ingresosCursosCerradosPorMes.map(item => ({
+        label: formatMes(item.mes),
+        value: item.total,
+    }));
+    const totalIngresosCerrados = dashboardData.ingresosCursosCerradosPorMes
         .reduce((sum, m) => sum + m.total, 0);
 
     return (
         <Document>
             <Page size="LETTER" orientation="portrait" style={styles.page}>
-                {/* Header */}
+
+                {/* ── Header ──────────────────────────────────────────────────── */}
                 <View style={styles.headerContainer}>
                     <Image src="/images/logoCMIC.png" style={styles.logoLeft} />
                     <View style={styles.headerTextContainer}>
@@ -339,7 +385,7 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                     <Image src="/images/logoICIC.png" style={styles.logoRight} />
                 </View>
 
-                {/* KPIs principales */}
+                {/* ── KPIs ────────────────────────────────────────────────────── */}
                 <View style={styles.kpiContainer}>
                     <View style={styles.kpiItem}>
                         <Text style={styles.kpiValue}>{totalInscripciones}</Text>
@@ -359,14 +405,14 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                     </View>
                 </View>
 
-                {/* Grafico 1: Inscripciones por Mes */}
+                {/* ── Gráfico 1: Inscripciones por Mes ────────────────────────── */}
                 <View style={styles.chartContainer}>
                     <Text style={styles.chartTitle}>Inscripciones por Mes</Text>
-                    <Text style={styles.chartSubtitle}>Ultimos 12 meses</Text>
+                    <Text style={styles.chartSubtitle}>Agrupado por fecha de inicio del curso</Text>
                     <BarChartSimulator data={inscripcionesData} color={colors.accentRed} />
                 </View>
 
-                {/* Grafico 2: Distribucion de Cursos */}
+                {/* ── Gráfico 2: Distribución de Cursos ───────────────────────── */}
                 <View style={styles.chartContainer}>
                     <Text style={styles.chartTitle}>Distribucion por Curso</Text>
                     <Text style={styles.chartSubtitle}>Participantes inscritos por curso</Text>
@@ -384,14 +430,14 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                     </View>
                 </View>
 
-                {/* Grafico 3: Saldo FECAP por Mes */}
+                {/* ── Gráfico 3: Saldo FECAP por Mes ──────────────────────────── */}
                 <View style={styles.chartContainer}>
                     <Text style={styles.chartTitle}>Saldo FECAP por Mes</Text>
                     <Text style={styles.chartSubtitle}>Ingresos vs Gastos de saldo FECAP</Text>
                     <LineChartSimulator data={fecapData} />
                 </View>
 
-                {/* Grafico 4: Horas Hombre por Mes */}
+                {/* ── Gráfico 4: Horas Hombre por Mes ─────────────────────────── */}
                 <View style={styles.chartContainer}>
                     <Text style={styles.chartTitle}>Horas Hombre por Mes</Text>
                     <Text style={styles.chartSubtitle}>HH = Duracion del curso × Participantes inscritos</Text>
@@ -411,17 +457,16 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                     </View>
                     <BarChartSimulator data={horasHombreData} color="#6366f1" />
                 </View>
-                {/* Gráfico 5: Ingresos por Mes (Efectivo + Transferencia) */}
+
+                {/* ── Gráfico 5: Ingresos por Mes (Efectivo + Transferencia) ───── */}
                 <View style={[styles.chartContainer, { marginTop: 10 }]} wrap={false}>
-                    <Text style={styles.chartTitle}>Ingresos por Mes</Text>
+                    <Text style={styles.chartTitle}>Ingresos por Mes (Cursos Abiertos)</Text>
                     <Text style={styles.chartSubtitle}>
                         Pagos confirmados por Efectivo y Transferencia
                     </Text>
                     <View style={styles.statsRow}>
                         <View style={styles.statCard}>
-                            <Text style={styles.statValue}>
-                                {formatCurrency(totalIngresos)}
-                            </Text>
+                            <Text style={styles.statValue}>{formatCurrency(totalIngresos)}</Text>
                             <Text style={styles.statLabel}>Total Recaudado</Text>
                         </View>
                         <View style={styles.statCard}>
@@ -442,7 +487,42 @@ export const DashboardPDF: React.FC<DashboardPDFProps> = ({ dashboardData, fecha
                     </View>
                     <BarChartSimulator data={ingresosData} color="#22c55e" />
                 </View>
-                <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => `Pagina ${pageNumber} de ${totalPages}`} fixed />
+
+                {/* ── Gráfico 6: Ingresos por Cursos Cerrados ─────────────────── */}
+                <View style={[styles.chartContainer, { marginTop: 10 }]} wrap={false}>
+                    <Text style={styles.chartTitle}>Ingresos por Cursos Cerrados</Text>
+                    <Text style={styles.chartSubtitle}>
+                        Precio por participante × número de participantes, agrupado por mes de inicio del curso
+                    </Text>
+                    <View style={styles.statsRow}>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>{formatCurrency(totalIngresosCerrados)}</Text>
+                            <Text style={styles.statLabel}>Total Facturado</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>
+                                {dashboardData.ingresosCursosCerradosPorMes.length}
+                            </Text>
+                            <Text style={styles.statLabel}>Meses con Cursos</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Text style={styles.statValue}>
+                                {formatCurrency(
+                                    totalIngresosCerrados /
+                                    (dashboardData.ingresosCursosCerradosPorMes.length || 1)
+                                )}
+                            </Text>
+                            <Text style={styles.statLabel}>Promedio Mensual</Text>
+                        </View>
+                    </View>
+                    <BarChartSimulator data={ingresosCerradosData} color="#8b5cf6" />
+                </View>
+
+                <Text
+                    style={styles.pageNumber}
+                    render={({ pageNumber, totalPages }) => `Pagina ${pageNumber} de ${totalPages}`}
+                    fixed
+                />
             </Page>
         </Document>
     );

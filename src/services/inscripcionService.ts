@@ -36,7 +36,17 @@ export const eliminarInscripcion = async (id: number) => {
   return res.data;
 };
 
-export const obtenerInscripcionesPorCurso = async (cursoId: number) => {
-  const res = await apiClient.get("/inscripciones", { params: { cursoId } });
+export const obtenerInscripcionesPorCurso = async (
+  cursoId: number,
+  limit = 100,
+) => {
+  const res = await apiClient.get("/inscripciones", {
+    params: {
+      cursoId,
+      page: 1,
+      limit,
+    },
+  });
+
   return res.data;
 };

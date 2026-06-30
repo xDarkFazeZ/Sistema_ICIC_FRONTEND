@@ -15,7 +15,7 @@ interface InstructorModalProps {
   instructorToEdit?: any;
 }
 
-const validate = {
+const validators = {
   nombre: (v: string) =>
     !v || v.trim().length < 2
       ? "Mínimo 2 caracteres"
@@ -67,19 +67,17 @@ const INITIAL_FORM = {
   fechaNacimiento: "",
 };
 
-const FORM_ID = "instructor-modal-form";
-
 export default function InstructorModal({
   isOpen,
   onClose,
   onSuccess,
   instructorToEdit,
 }: InstructorModalProps) {
-  const [form, setForm] = useState({ ...INITIAL_FORM });
-  const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [form, setForm]         = useState({ ...INITIAL_FORM });
+  const [errors, setErrors]     = useState<Record<string, string | null>>({});
+  const [touched, setTouched]   = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError]   = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -91,12 +89,12 @@ export default function InstructorModal({
     }
     if (instructorToEdit) {
       setForm({
-        nombre: instructorToEdit.nombre ?? "",
+        nombre:          instructorToEdit.nombre          ?? "",
         apellidoPaterno: instructorToEdit.apellidoPaterno ?? "",
         apellidoMaterno: instructorToEdit.apellidoMaterno ?? "",
-        rfc: instructorToEdit.rfc ?? "",
-        celular: instructorToEdit.celular ?? "",
-        correo: instructorToEdit.correo ?? "",
+        rfc:             instructorToEdit.rfc             ?? "",
+        celular:         instructorToEdit.celular         ?? "",
+        correo:          instructorToEdit.correo          ?? "",
         fechaNacimiento: instructorToEdit.fechaNacimiento
           ? instructorToEdit.fechaNacimiento.split("T")[0]
           : "",
@@ -106,38 +104,37 @@ export default function InstructorModal({
 
   const handleChange = (field: keyof typeof INITIAL_FORM, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (touched[field] && validate[field as keyof typeof validate]) {
+    if (touched[field] && validators[field as keyof typeof validators]) {
       setErrors((prev) => ({
         ...prev,
-        [field]: (validate[field as keyof typeof validate] as any)(value),
+        [field]: (validators[field as keyof typeof validators] as any)(value),
       }));
     }
   };
 
   const handleBlur = (field: keyof typeof INITIAL_FORM) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    if (validate[field as keyof typeof validate]) {
+    if (validators[field as keyof typeof validators]) {
       setErrors((prev) => ({
         ...prev,
-        [field]: (validate[field as keyof typeof validate] as any)(form[field]),
+        [field]: (validators[field as keyof typeof validators] as any)(form[field]),
       }));
     }
   };
 
   const validateAll = () => {
     const e: Record<string, string | null> = {};
-    for (const field of Object.keys(validate) as (keyof typeof validate)[]) {
-      const err = validate[field](form[field as keyof typeof INITIAL_FORM]);
+    for (const field of Object.keys(validators) as (keyof typeof validators)[]) {
+      const err = validators[field](form[field as keyof typeof INITIAL_FORM]);
       if (err) e[field] = err;
     }
     setErrors(e);
-    setTouched(Object.fromEntries(Object.keys(validate).map((k) => [k, true])));
+    setTouched(Object.fromEntries(Object.keys(validators).map((k) => [k, true])));
     return Object.values(e).every((v) => !v);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // ✅ CORRECCIÓN: ya no recibe React.FormEvent — se llama desde onSubmit de ModalForm
+  const handleSubmit = async () => {
     if (!validateAll()) {
       sileo?.warning?.({
         title: "Campos con errores",
@@ -149,27 +146,23 @@ export default function InstructorModal({
     setSubmitError(null);
     setIsSubmitting(true);
 
-    // Construir payload
     const payload: Record<string, any> = {
-      nombre: form.nombre.trim(),
+      nombre:          form.nombre.trim(),
       apellidoPaterno: form.apellidoPaterno.trim(),
     };
 
     if (form.apellidoMaterno.trim()) payload.apellidoMaterno = form.apellidoMaterno.trim();
-    if (form.rfc.trim()) payload.rfc = form.rfc.trim();
-    if (form.celular.trim()) payload.celular = form.celular.trim();
-    if (form.correo.trim()) payload.correo = form.correo.trim();
+    if (form.rfc.trim())             payload.rfc             = form.rfc.trim();
+    if (form.celular.trim())         payload.celular         = form.celular.trim();
+    if (form.correo.trim())          payload.correo          = form.correo.trim();
 
-    // Manejar fecha de nacimiento
     if (form.fechaNacimiento && form.fechaNacimiento.trim()) {
       const parsed = new Date(form.fechaNacimiento);
       if (!isNaN(parsed.getTime())) {
         payload.fechaNacimiento = form.fechaNacimiento;
       }
     }
-    console.log('📦 Payload a enviar:', payload);
 
-    // Llamada al API
     try {
       let response;
       if (instructorToEdit) {
@@ -188,12 +181,11 @@ export default function InstructorModal({
       onSuccess?.(response);
       onClose();
     } catch (err: any) {
-      console.error('❌ Error en submit:', err);
       const data = err?.response?.data;
-      const msg = data?.message ?? data?.error ?? err?.message ?? "Error desconocido";
+      const msg  = data?.message ?? data?.error ?? err?.message ?? "Error desconocido";
       setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg));
       sileo?.error?.({
-        title: "Error",
+        title:       "Error",
         description: "No se pudo guardar el instructor.",
       });
     } finally {
@@ -202,26 +194,29 @@ export default function InstructorModal({
   };
 
   const fieldProps = (field: keyof typeof INITIAL_FORM) => ({
-    value: form[field],
-    onValueChange: (v: string) => handleChange(field, v),
-    onBlur: () => handleBlur(field),
-    isInvalid: !!(touched[field] && errors[field]),
-    errorMessage: touched[field] ? errors[field] ?? undefined : undefined,
-    size: "sm" as const,
-    variant: "bordered" as const,
-    radius: "lg" as const,
+    value:          form[field],
+    onValueChange:  (v: string) => handleChange(field, v),
+    onBlur:         () => handleBlur(field),
+    isInvalid:      !!(touched[field] && errors[field]),
+    errorMessage:   touched[field] ? errors[field] ?? undefined : undefined,
+    size:           "sm" as const,
+    variant:        "bordered" as const,
+    radius:         "lg" as const,
   });
 
   return (
+    // ✅ CORRECCIÓN: se elimina el <form> interno y se usa onSubmit de ModalForm
+    // Esto evita que el form interno interfiera con forms de modales padre (CursoModal)
     <ModalForm
       isOpen={isOpen}
       onClose={onClose}
       title={instructorToEdit ? "Editar Instructor" : "Nuevo Instructor"}
       size="2xl"
       isLoading={isSubmitting}
-      formId={FORM_ID}
+      onSubmit={handleSubmit}
+      submitText={instructorToEdit ? "Actualizar instructor" : "Crear instructor"}
     >
-      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         {/* Error del servidor */}
         {submitError && (
           <div className="flex items-start gap-3 p-3 rounded-xl bg-danger-50 border border-danger-200">
@@ -346,7 +341,7 @@ export default function InstructorModal({
             }
           />
         </section>
-      </form>
+      </div>
     </ModalForm>
   );
 }

@@ -1,11 +1,24 @@
-// El mismo código que antes, pero asegurando que los datos del curso se pasen correctamente
 import { useEffect, useState } from "react";
 import ModalForm from "../../common/modalForm";
-import { Card, CardBody, Chip, Divider, Spinner, Button } from "@heroui/react";
 import {
-  BookOpen, User, CalendarDays, Clock,
-  MapPin, GraduationCap, FileText, Users,
+  Card,
+  CardBody,
+  Chip,
+  Divider,
+  Spinner,
+  Button,
+} from "@heroui/react";
+import {
+  BookOpen,
+  User,
+  CalendarDays,
+  Clock,
+  MapPin,
+  GraduationCap,
+  FileText,
+  Users,
 } from "lucide-react";
+
 import { obtenerInscripcionesPorCurso } from "../../../services/inscripcionService";
 import { PDFDownloadButton } from "../../../components/pdf/PDFDownloadButton";
 
@@ -15,29 +28,50 @@ interface CursoDetalleModalProps {
   curso?: any;
 }
 
-const estadoColor: Record<string, "success" | "warning" | "danger" | "default"> = {
+const estadoColor: Record<
+  string,
+  "success" | "warning" | "danger" | "default"
+> = {
   PAGADO: "success",
   PENDIENTE: "warning",
   CANCELADO: "danger",
   REEMBOLSADO: "default",
 };
 
-export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetalleModalProps) {
+export default function CursoDetalleModal({
+  isOpen,
+  onClose,
+  curso,
+}: CursoDetalleModalProps) {
   const [inscritos, setInscritos] = useState<any[]>([]);
+  const [totalInscritos, setTotalInscritos] = useState(0);
   const [loadingInscritos, setLoadingInscritos] = useState(false);
   const [cursoCompleto, setCursoCompleto] = useState<any>(null);
 
   useEffect(() => {
-    if (!isOpen || !curso?.id) return;
+    if (!isOpen || !curso?.id) {
+      setInscritos([]);
+      setTotalInscritos(0);
+      setCursoCompleto(null);
+      return;
+    }
 
     const cargarDatosCompletos = async () => {
       setLoadingInscritos(true);
-      try {
-        const inscripcionesRes = await obtenerInscripcionesPorCurso(curso.id);
-        const inscripciones = inscripcionesRes.data ?? [];
-        setInscritos(inscripciones);
 
-        // Construir objeto con SOLO los campos de la BD
+      try {
+        const inscripcionesRes = await obtenerInscripcionesPorCurso(
+          curso.id,
+          100,
+        );
+
+        const inscripciones = inscripcionesRes.data ?? [];
+        const totalReal =
+          inscripcionesRes.pagination?.total ?? inscripciones.length;
+
+        setInscritos(inscripciones);
+        setTotalInscritos(totalReal);
+
         const cursoConInscripciones = {
           id: curso.id,
           nombre: curso.nombre,
@@ -49,6 +83,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           horario: curso.horario,
           aula: curso.aula,
           instructor: curso.instructor,
+          totalInscritos: totalReal,
           inscripciones: inscripciones.map((ins: any) => ({
             ...ins,
             participante: ins.participante,
@@ -56,11 +91,15 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
             metodoPago: ins.metodoPago,
             montoFinal: ins.montoFinal,
             montoEsperado: ins.montoEsperado,
-          }))
+          })),
         };
+
         setCursoCompleto(cursoConInscripciones);
       } catch (error) {
-        console.error(error);
+        console.error("Error al cargar inscripciones del curso:", error);
+        setInscritos([]);
+        setTotalInscritos(0);
+        setCursoCompleto(null);
       } finally {
         setLoadingInscritos(false);
       }
@@ -82,28 +121,29 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
         </div>
       }
       size="4xl"
-      footer={
+      customFooter={
         <div className="flex justify-end gap-2">
           <Button variant="light" onPress={onClose}>
             Cerrar
           </Button>
+
           {cursoCompleto && (
             <PDFDownloadButton
               cursoData={cursoCompleto}
               buttonText="Descargar Reporte PDF"
               variant="solid"
               color="primary"
-              onError={(error) => console.error('Error PDF:', error)}
+              onError={(error) => console.error("Error PDF:", error)}
             />
           )}
         </div>
       }
     >
       <div className="space-y-6">
-        {/* Resto del contenido igual... */}
         <Card shadow="sm">
           <CardBody className="flex gap-3">
             <BookOpen className="text-danger" />
+
             <div>
               <p className="text-xs text-default-500">Nombre del curso</p>
               <p className="font-semibold text-lg">{curso.nombre}</p>
@@ -115,6 +155,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3">
               <FileText className="text-primary" />
+
               <div>
                 <p className="text-xs text-default-500">Descripción</p>
                 <p className="text-sm leading-relaxed">{curso.descripcion}</p>
@@ -129,6 +170,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <User className="text-success" />
+
               <div>
                 <p className="text-xs text-default-500">Instructor</p>
                 <p className="font-medium">
@@ -143,6 +185,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <Clock className="text-warning" />
+
               <div>
                 <p className="text-xs text-default-500">Horario</p>
                 <p className="font-medium">{curso.horario}</p>
@@ -153,11 +196,15 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <CalendarDays className="text-primary" />
+
               <div>
                 <p className="text-xs text-default-500">Fecha Inicio</p>
                 <p className="font-medium">
                   {new Date(curso.fechaInicio).toLocaleDateString("es-MX", {
-                    day: "2-digit", month: "short", year: "numeric", timeZone: "UTC"
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "UTC",
                   })}
                 </p>
               </div>
@@ -167,11 +214,15 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <CalendarDays className="text-primary" />
+
               <div>
                 <p className="text-xs text-default-500">Fecha Fin</p>
                 <p className="font-medium">
                   {new Date(curso.fechaFin).toLocaleDateString("es-MX", {
-                    day: "2-digit", month: "short", year: "numeric", timeZone: "UTC"
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "UTC",
                   })}
                 </p>
               </div>
@@ -181,6 +232,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <Clock className="text-danger" />
+
               <div>
                 <p className="text-xs text-default-500">Duración</p>
                 <p className="font-medium">{curso.duracion} horas</p>
@@ -191,6 +243,7 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <Card shadow="sm">
             <CardBody className="flex gap-3 items-center">
               <MapPin className="text-secondary" />
+
               <div>
                 <p className="text-xs text-default-500">Aula</p>
                 <p className="font-medium">{curso.aula ?? "—"}</p>
@@ -201,9 +254,12 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
 
         <div className="flex items-center gap-3">
           <GraduationCap className="text-danger" />
+
           <div>
             <p className="text-xs text-default-500">Nivel Gerencial</p>
-            <Chip color="danger" variant="flat">{curso.nivelGerencial}</Chip>
+            <Chip color="danger" variant="flat">
+              {curso.nivelGerencial}
+            </Chip>
           </div>
         </div>
 
@@ -213,11 +269,15 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users size={18} className="text-primary" />
-              <h3 className="font-semibold text-default-700">Participantes inscritos</h3>
+              <h3 className="font-semibold text-default-700">
+                Participantes inscritos
+              </h3>
             </div>
+
             {!loadingInscritos && (
               <Chip color="primary" variant="flat" size="sm">
-                {inscritos.length} {inscritos.length === 1 ? "participante" : "participantes"}
+                {totalInscritos}{" "}
+                {totalInscritos === 1 ? "participante" : "participantes"}
               </Chip>
             )}
           </div>
@@ -235,22 +295,38 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {inscritos.map((ins: any, i: number) => {
                 const p = ins.participante;
-                const nombreCompleto = [p?.nombre, p?.apellidoPaterno, p?.apellidoMaterno]
-                  .filter(Boolean).join(" ");
+
+                const nombreCompleto = [
+                  p?.nombre,
+                  p?.apellidoPaterno,
+                  p?.apellidoMaterno,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+
                 return (
-                  <div key={ins.id}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-default-50 border border-default-200 hover:bg-default-100 transition-colors">
+                  <div
+                    key={ins.id ?? `${p?.id ?? "participante"}-${i}`}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl bg-default-50 border border-default-200 hover:bg-default-100 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-xs font-bold text-primary-600 flex-shrink-0">
                         {i + 1}
                       </div>
+
                       <div>
-                        <p className="text-sm font-medium text-default-800">{nombreCompleto}</p>
+                        <p className="text-sm font-medium text-default-800">
+                          {nombreCompleto || "Participante sin nombre"}
+                        </p>
+
                         {p?.correo && (
-                          <p className="text-xs text-default-400">{p.correo}</p>
+                          <p className="text-xs text-default-400">
+                            {p.correo}
+                          </p>
                         )}
                       </div>
                     </div>
+
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Chip
                         size="sm"
@@ -265,16 +341,12 @@ export default function CursoDetalleModal({ isOpen, onClose, curso }: CursoDetal
               })}
             </div>
           )}
-        </div>
-        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-default-200">
-          {cursoCompleto && (
-            <PDFDownloadButton
-              cursoData={cursoCompleto}
-              buttonText="Descargar Reporte PDF"
-              variant="solid"
-              color="primary"
-              onError={(error) => console.error('Error PDF:', error)}
-            />
+
+          {!loadingInscritos && totalInscritos > inscritos.length && (
+            <p className="text-xs text-warning-600 text-center">
+              Se muestran {inscritos.length} de {totalInscritos} participantes.
+              Aumenta el límite de consulta si necesitas ver todos.
+            </p>
           )}
         </div>
       </div>

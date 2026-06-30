@@ -19,9 +19,7 @@ import { useTheme } from "../hooks/useTheme";
 import { sileo } from "sileo";
 
 // Importar modales
-import CursoModal from "../components/modals/Cursos/cursosModal";
-import CursoCerradoModal from "../components/modals/Cursos/CursoCerradoModal";
-import TipoCursoModal from "../components/modals/Cursos/TipoCursoModal";
+import CursoModal from "../components/modals/Cursos/cursosModal"; // ← modal unificado
 import InstructorModal from "../components/modals/Instructor/instructorModal";
 import ParticipanteModal from "../components/modals/Participante/participanteModal";
 import ParticipanteDetalleModal from "../components/modals/Participante/participanteDetalleModal";
@@ -39,6 +37,7 @@ import TablaPagosPendientes from "../components/dashboard/TablaPagosPendientes";
 import GraficoFecap from "../components/dashboard/GraficoFecap";
 import GraficoHorasHombre from "../components/dashboard/GraficoHorasHombre";
 import GraficoIngresosMensuales from "../components/dashboard/GraficoIngresosMensuales";
+import { useNavigate as useNav } from "react-router-dom";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -54,14 +53,13 @@ export default function Dashboard() {
     pagosPendientes: [],
     saldoFecapPorMes: [],
     horasHombrePorMes: [],
-    ingresosPorMesEfectivoTransferencia: [], // ← Agrega esta línea
+    ingresosPorMesEfectivoTransferencia: [],
   });
 
+  // Estado para el modal unificado de cursos
+  const [modalCursoOpen, setModalCursoOpen] = useState(false);
 
-  // Estados para los modales
-  const [tipoCursoModalAbierto, setTipoCursoModalAbierto] = useState(false);
-  const [modalCursoAbierto, setModalCursoAbierto] = useState(false);
-  const [modalCursoCerradoOpen, setModalCursoCerradoOpen] = useState(false);
+  // Estados para los demás modales
   const [modalInstructorAbierto, setModalInstructorAbierto] = useState(false);
   const [modalParticipanteAbierto, setModalParticipanteAbierto] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -69,13 +67,13 @@ export default function Dashboard() {
   // Estados para modales de pago
   const [detalleParticipanteModal, setDetalleParticipanteModal] = useState({
     isOpen: false,
-    participante: null as any
+    participante: null as any,
   });
 
   const [estadoPagoModal, setEstadoPagoModal] = useState({
     isOpen: false,
     inscripciones: [] as any[],
-    nombreParticipante: ""
+    nombreParticipante: "",
   });
 
   // Cargar datos del dashboard
@@ -86,28 +84,20 @@ export default function Dashboard() {
         const data = await dashboardService.getDashboardData();
         setDashboardData(data);
       } catch (error) {
-        console.error('Error cargando datos del dashboard:', error);
+        console.error("Error cargando datos del dashboard:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    setTimeout(() => { logout(); navigate("/login"); }, 800);
-  };
-
-  // Selección de tipo de curso
-  const handleSelectTipoCurso = (tipo: "ABIERTO" | "CERRADO") => {
-    setTipoCursoModalAbierto(false);
-    if (tipo === "ABIERTO") {
-      setModalCursoAbierto(true);
-    } else {
-      setModalCursoCerradoOpen(true);
-    }
+    setTimeout(() => {
+      logout();
+      navigate("/login");
+    }, 800);
   };
 
   const recargarDashboard = async () => {
@@ -115,20 +105,19 @@ export default function Dashboard() {
       const data = await dashboardService.getDashboardData();
       setDashboardData(data);
     } catch (error) {
-      console.error('Error recargando datos:', error);
+      console.error("Error recargando datos:", error);
     }
   };
 
-  // Manejadores de éxito para los modales
-  const handleCursoCreado = async (nuevoCurso: any) => {
-    setModalCursoAbierto(false);
-    await recargarDashboard();
-  };
-
-  const handleCursoCerradoCreado = async (data: any) => {
+  // El modal unificado llama a onCursoCreado para creación (lo maneja el hook internamente).
+  // Solo necesitamos recargar el dashboard al cerrar tras éxito.
+  const handleCursoCreado = async (data: any) => {
     const { crearCurso } = await import("../services/cursoService");
     const cursoCreado = await crearCurso(data);
-    sileo.success({ title: "Curso creado correctamente", description: cursoCreado.nombre });
+    sileo.success({
+      title: "Curso creado correctamente",
+      description: cursoCreado.nombre,
+    });
     await recargarDashboard();
     return cursoCreado;
   };
@@ -145,7 +134,7 @@ export default function Dashboard() {
       const data = await dashboardService.getDashboardData();
       setDashboardData(data);
     } catch (error) {
-      console.error('Error recargando datos:', error);
+      console.error("Error recargando datos:", error);
     }
   };
 
@@ -156,39 +145,46 @@ export default function Dashboard() {
       participante: {
         ...pago.participante,
         id: pago.participante?.id || pago.id,
-        inscripciones: [{
-          id: pago.id,
-          curso: pago.curso,
-          estadoPago: pago.estadoPago,
-          montoFinal: pago.montoEsperado,
-          fechaPago: pago.inscritoEn
-        }]
-      }
+        inscripciones: [
+          {
+            id: pago.id,
+            curso: pago.curso,
+            estadoPago: pago.estadoPago,
+            montoFinal: pago.montoEsperado,
+            fechaPago: pago.inscritoEn,
+          },
+        ],
+      },
     });
   };
-
 
   const handleRegistrarPago = (pago: any) => {
     setEstadoPagoModal({
       isOpen: true,
-      inscripciones: [{
-        id: pago.id,
-        curso: pago.curso,
-        estadoPago: "PENDIENTE",
-        montoFinal: pago.montoEsperado,
-        montoPagado: 0,
-        fechaPago: pago.inscritoEn
-      }],
-      nombreParticipante: `${pago.participante?.nombre} ${pago.participante?.apellidoPaterno}`
+      inscripciones: [
+        {
+          id: pago.id,
+          curso: pago.curso,
+          estadoPago: "PENDIENTE",
+          montoFinal: pago.montoEsperado,
+          montoPagado: 0,
+          fechaPago: pago.inscritoEn,
+        },
+      ],
+      nombreParticipante: `${pago.participante?.nombre} ${pago.participante?.apellidoPaterno}`,
     });
   };
 
   const handleCancelarInscripcion = (pago: any) => {
-    if (window.confirm(`¿Estás seguro de cancelar la inscripción de ${pago.participante?.nombre}?`)) {
-      console.log('Cancelar inscripción:', pago);
+    if (
+      window.confirm(
+        `¿Estás seguro de cancelar la inscripción de ${pago.participante?.nombre}?`
+      )
+    ) {
+      console.log("Cancelar inscripción:", pago);
       sileo.success({
         title: "Inscripción cancelada",
-        description: "La inscripción ha sido cancelada exitosamente"
+        description: "La inscripción ha sido cancelada exitosamente",
       });
     }
   };
@@ -203,7 +199,9 @@ export default function Dashboard() {
           </div>
           <Spinner size="lg" color="danger" />
         </div>
-        <p className="text-gray-700 dark:text-gray-300 font-medium animate-pulse">Cerrando sesión...</p>
+        <p className="text-gray-700 dark:text-gray-300 font-medium animate-pulse">
+          Cerrando sesión...
+        </p>
       </div>
     );
   }
@@ -212,10 +210,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black flex">
       <Sidebar />
 
-      {/* CONTENIDO PRINCIPAL - Dashboard */}
+      {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
-          {/* Header con bienvenida y botón PDF */}
+          {/* Header */}
           <div className="mb-8">
             <div className="flex justify-between items-start">
               <div className="animate-in fade-in slide-in-from-top duration-500">
@@ -223,11 +221,19 @@ export default function Dashboard() {
                   ¡Bienvenido, {user?.nombre}!
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Panel de control · {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  Panel de control ·{" "}
+                  {new Date().toLocaleDateString("es-MX", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </p>
               </div>
               <div className="flex-shrink-0">
-                <DashboardPDFButton onError={(error) => console.error('Error PDF:', error)} />
+                <DashboardPDFButton
+                  onError={(error) => console.error("Error PDF:", error)}
+                />
               </div>
             </div>
           </div>
@@ -293,10 +299,10 @@ export default function Dashboard() {
                 </div>
               </Card>
 
-              {/* Alta de Curso */}
+              {/* Alta de Curso — abre el modal unificado directamente */}
               <Card
                 isPressable
-                onPress={() => setTipoCursoModalAbierto(true)}
+                onPress={() => setModalCursoOpen(true)}
                 className="p-6 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-xl hover:border-red-300 dark:hover:border-red-800 transition-all duration-300 group cursor-pointer"
               >
                 <div className="flex items-start gap-4">
@@ -321,14 +327,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* SECCIÓN DE GRÁFICOS Y ESTADÍSTICAS */}
+          {/* GRÁFICOS */}
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <Spinner size="lg" color="danger" />
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Gráfico de Barras - Inscripciones por Mes */}
               {dashboardData.inscripcionesPorMes.length > 0 && (
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-2">
                   <div className="flex items-center gap-3 mb-6">
@@ -345,14 +350,20 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <div style={{ minWidth: dashboardData.inscripcionesPorMes.length > 6 ? `${dashboardData.inscripcionesPorMes.length * 60}px` : '100%' }}>
+                    <div
+                      style={{
+                        minWidth:
+                          dashboardData.inscripcionesPorMes.length > 6
+                            ? `${dashboardData.inscripcionesPorMes.length * 60}px`
+                            : "100%",
+                      }}
+                    >
                       <GraficoBarras data={dashboardData.inscripcionesPorMes} />
                     </div>
                   </div>
                 </Card>
               )}
 
-              {/* Gráfico de Pastel - Distribución por Curso */}
               {dashboardData.distribucionCursos.length > 0 && (
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-1">
                   <div className="flex items-center gap-3 mb-6">
@@ -372,7 +383,6 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              {/* Gráfico FECAP — ancho completo */}
               {dashboardData.saldoFecapPorMes.length > 0 && (
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
@@ -396,8 +406,18 @@ export default function Dashboard() {
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg">
-                      <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-emerald-600 dark:text-emerald-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     </div>
                     <div>
@@ -410,12 +430,13 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <GraficoIngresosMensuales data={dashboardData.ingresosPorMesEfectivoTransferencia} />
+                    <GraficoIngresosMensuales
+                      data={dashboardData.ingresosPorMesEfectivoTransferencia}
+                    />
                   </div>
                 </Card>
               )}
 
-              {/* Gráfico HH por Mes */}
               {dashboardData.horasHombrePorMes.length > 0 && (
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
@@ -435,7 +456,6 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              {/* Calendario de Cursos - ancho completo */}
               {dashboardData.cursosConEstado.length > 0 && (
                 <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                   <div className="flex items-center gap-3 mb-6">
@@ -455,7 +475,6 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              {/* Tabla de Pagos Pendientes - ocupa ambas columnas */}
               <Card className="p-6 bg-white dark:bg-gray-900 xl:col-span-3">
                 <TablaPagosPendientes
                   pagosPendientes={dashboardData.pagosPendientes}
@@ -469,23 +488,16 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* MODALES - Todos dentro del div principal */}
-      <TipoCursoModal
-        isOpen={tipoCursoModalAbierto}
-        onClose={() => setTipoCursoModalAbierto(false)}
-        onSelect={handleSelectTipoCurso}
-      />
+      {/* ── MODALES ─────────────────────────────────────────────────────────── */}
 
+      {/* Modal unificado de cursos (abierto + cerrado + paso de tipo) */}
       <CursoModal
-        isOpen={modalCursoAbierto}
-        onClose={() => setModalCursoAbierto(false)}
-        onSuccess={handleCursoCreado}
-      />
-
-      <CursoCerradoModal
-        isOpen={modalCursoCerradoOpen}
-        onClose={() => { setModalCursoCerradoOpen(false); recargarDashboard(); }}
-        onCursoCreado={handleCursoCerradoCreado}
+        isOpen={modalCursoOpen}
+        onClose={() => {
+          setModalCursoOpen(false);
+          recargarDashboard();
+        }}
+        onCursoCreado={handleCursoCreado}
       />
 
       <InstructorModal
@@ -502,26 +514,24 @@ export default function Dashboard() {
 
       <ParticipanteDetalleModal
         isOpen={detalleParticipanteModal.isOpen}
-        onClose={() => setDetalleParticipanteModal({ isOpen: false, participante: null })}
+        onClose={() =>
+          setDetalleParticipanteModal({ isOpen: false, participante: null })
+        }
         participante={detalleParticipanteModal.participante}
       />
 
       <EstadoPagoModal
         isOpen={estadoPagoModal.isOpen}
-        onClose={() => setEstadoPagoModal({ isOpen: false, inscripciones: [], nombreParticipante: "" })}
+        onClose={() =>
+          setEstadoPagoModal({
+            isOpen: false,
+            inscripciones: [],
+            nombreParticipante: "",
+          })
+        }
         inscripciones={estadoPagoModal.inscripciones}
         nombreParticipante={estadoPagoModal.nombreParticipante}
-        onSuccess={(inscripcionActualizada) => {
-          const fetchDashboardData = async () => {
-            try {
-              const data = await dashboardService.getDashboardData();
-              setDashboardData(data);
-            } catch (error) {
-              console.error('Error recargando datos:', error);
-            }
-          };
-          fetchDashboardData();
-        }}
+        onSuccess={() => recargarDashboard()}
       />
     </div>
   );
